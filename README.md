@@ -1,0 +1,2 @@
+# powerseed
+influencer marketing application
