@@ -1,0 +1,23 @@
+<div class="bg-white border border-slate-200 rounded-lg">
+  <div class="px-3 py-2 border-b border-slate-100 flex items-center justify-between">
+    <h3 class="text-sm font-semibold">{{ title }}</h3>
+    <span class="text-xs px-2 py-0.5 rounded-full
+      {% if tone == 'red' %}bg-red-100 text-red-700{% elif tone == 'amber' %}bg-amber-100 text-amber-800{% else %}bg-sky-100 text-sky-800{% endif %}">{{ items|length }}</span>
+  </div>
+  <ul class="divide-y divide-slate-100 max-h-64 overflow-y-auto">
+    {% for p in items %}
+    <li class="px-3 py-2 text-sm">
+      <a href="{% url 'campaigns:participation' p.pk %}" class="font-medium hover:text-emerald-700">{{ p.influencer }}</a>
+      <div class="text-xs text-slate-500">
+        {{ p.campaign.name }} · {{ p.assignee|default:"담당자 없음" }} ·
+        {% if date_field == "visit" %}방문 {{ p.confirmed_visit_at|date:"m/d H:i" }}
+        {% elif date_field == "upload" %}기한 {{ p.upload_due_at|date:"m/d H:i" }}
+        {% elif date_field == "updated" %}발송 {{ p.survey_sent_at|date:"m/d" }}
+        {% else %}{{ p.fee_amount|default_if_none:"원고료 미정" }}{% if p.fee_amount %}원{% endif %} · {{ p.get_payout_method_display|default:"송금수단 미정" }}{% endif %}
+      </div>
+    </li>
+    {% empty %}
+    <li class="px-3 py-3 text-xs text-slate-400">없음</li>
+    {% endfor %}
+  </ul>
+</div>

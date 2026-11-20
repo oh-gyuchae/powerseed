@@ -82,7 +82,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -170,3 +170,7 @@ SITE_BASE_URL = os.environ.get('SITE_BASE_URL', 'http://127.0.0.1:8000')
 GOOGLE_SERVICE_ACCOUNT_FILE = os.environ.get('GOOGLE_SERVICE_ACCOUNT_FILE', '')
 CHANNELTALK_ACCESS_KEY = os.environ.get('CHANNELTALK_ACCESS_KEY', '')
 CHANNELTALK_ACCESS_SECRET = os.environ.get('CHANNELTALK_ACCESS_SECRET', '')
+
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'campaigns:dashboard'
+LOGOUT_REDIRECT_URL = 'login'

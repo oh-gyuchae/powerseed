@@ -1,0 +1,24 @@
+<article class="bg-white rounded border border-slate-200 p-2 text-sm {% if closed_card %}opacity-70{% endif %}">
+  <a href="{% url 'campaigns:participation' p.pk %}" class="font-medium hover:text-emerald-700 break-all">{{ p.influencer }}</a>
+  {% if p.influencer.account_name %}<span class="text-xs text-slate-500">{{ p.influencer.account_name }}</span>{% endif %}
+  <dl class="mt-1 grid grid-cols-2 gap-x-2 text-xs text-slate-600">
+    <dt>팔로워</dt><dd class="text-right">{{ p.influencer.follower_count|default_if_none:"-" }}</dd>
+    <dt>릴스 평균</dt><dd class="text-right">{{ p.influencer.monthly_reels_avg|default_if_none:"-" }}</dd>
+    <dt>원고료</dt><dd class="text-right">{% if p.fee_amount is not None %}{{ p.fee_amount }}원{% else %}-{% endif %}</dd>
+    {% if p.confirmed_visit_at %}<dt>방문</dt><dd class="text-right">{{ p.confirmed_visit_at|date:"m/d H:i" }}</dd>{% endif %}
+  </dl>
+  <div class="mt-1 text-xs text-slate-400">{{ p.assignee|default:"담당자 없음" }}</div>
+  {% if closed_card %}
+  <div class="mt-1 text-xs text-slate-500">{{ p.get_stage_display }}</div>
+  {% else %}
+  <select name="stage" aria-label="단계 변경"
+          class="mt-2 w-full border rounded px-1 py-0.5 text-xs bg-slate-50"
+          hx-post="{% url 'campaigns:change_stage' p.pk %}" hx-trigger="change"
+          hx-target="#board" hx-swap="outerHTML"
+          hx-vals='{"from": "board", "assignee": "{{ assignee_id|default:"" }}"}'>
+    {% for value, label in stage_choices %}
+    <option value="{{ value }}" {% if value == p.stage %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
+</article>

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}PowerSeed{% endblock %} · PowerSeed</title>
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  {% if user.is_authenticated %}
+  <nav class="bg-white border-b border-slate-200">
+    <div class="max-w-screen-2xl mx-auto px-4 h-14 flex items-center gap-6">
+      <a href="{% url 'campaigns:dashboard' %}" class="font-bold text-emerald-700">PowerSeed</a>
+      <a href="{% url 'campaigns:dashboard' %}" class="text-sm hover:text-emerald-700">대시보드</a>
+      <a href="{% url 'admin:index' %}" class="text-sm hover:text-emerald-700">데이터 관리</a>
+      <div class="ml-auto flex items-center gap-3 text-sm">
+        <span class="text-slate-500">{{ user.get_username }}</span>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+          <button class="text-slate-500 hover:text-slate-800">로그아웃</button>
+        </form>
+      </div>
+    </div>
+  </nav>
+  {% endif %}
+
+  <main class="max-w-screen-2xl mx-auto px-4 py-6">
+    {% if messages %}
+    <div class="mb-4 space-y-2">
+      {% for m in messages %}
+      <div class="rounded px-3 py-2 text-sm {% if m.tags == 'error' %}bg-red-50 text-red-700{% else %}bg-emerald-50 text-emerald-800{% endif %}">{{ m }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<div id="board">
+  {% if error %}<div class="mb-3 rounded px-3 py-2 text-sm bg-red-50 text-red-700">{{ error }}</div>{% endif %}
+  <div class="overflow-x-auto pb-4">
+    <div class="flex gap-3 min-w-max">
+      {% for col in columns %}
+      <section class="w-60 shrink-0 bg-slate-100 rounded-lg">
+        <h2 class="px-3 py-2 text-sm font-semibold flex justify-between">
+          <span>{{ col.stage.label }}</span><span class="text-slate-500">{{ col.items|length }}</span>
+        </h2>
+        <div class="px-2 pb-2 space-y-2">
+          {% for p in col.items %}{% include "campaigns/_card.html" %}{% endfor %}
+        </div>
+      </section>
+      {% endfor %}
+      <section class="w-60 shrink-0 bg-slate-200/60 rounded-lg">
+        <h2 class="px-3 py-2 text-sm font-semibold flex justify-between text-slate-500">
+          <span>거절 · 이탈</span><span>{{ closed|length }}</span>
+        </h2>
+        <div class="px-2 pb-2 space-y-2">
+          {% for p in closed %}{% include "campaigns/_card.html" with closed_card=True %}{% endfor %}
+        </div>
+      </section>
+    </div>
+  </div>
+</div>

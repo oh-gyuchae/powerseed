@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}대시보드{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-2xl font-bold">진행 현황</h1>
+  <div class="text-sm space-x-2">
+    <a href="?" class="px-2 py-1 rounded {% if not mine %}bg-slate-800 text-white{% else %}bg-white border{% endif %}">전체</a>
+    <a href="?mine=1" class="px-2 py-1 rounded {% if mine %}bg-slate-800 text-white{% else %}bg-white border{% endif %}">내 담당</a>
+  </div>
+</div>
+
+<section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4 mb-8">
+  {% include "campaigns/_alert_list.html" with title="방문일 경과 (미방문)" items=alerts.visit_overdue tone="red" date_field="visit" %}
+  {% include "campaigns/_alert_list.html" with title="업로드 기한 경과" items=alerts.upload_overdue tone="red" date_field="upload" %}
+  {% include "campaigns/_alert_list.html" with title="설문 미응답 (3일+)" items=alerts.survey_no_response tone="amber" date_field="updated" %}
+  {% include "campaigns/_alert_list.html" with title="원고료 지급 대기" items=alerts.payout_waiting tone="sky" date_field="fee" %}
+</section>
+
+<h2 class="text-lg font-semibold mb-2">진행 중 캠페인</h2>
+{% if summaries %}
+<div class="overflow-x-auto bg-white border border-slate-200 rounded-lg">
+  <table class="min-w-full text-sm">
+    <thead class="bg-slate-100 text-slate-600">
+      <tr>
+        <th class="text-left px-3 py-2 whitespace-nowrap">캠페인</th>
+        <th class="text-left px-3 py-2 whitespace-nowrap">책임자</th>
+        <th class="px-3 py-2 whitespace-nowrap">진행중</th>
+        <th class="px-3 py-2 whitespace-nowrap">확정 이상</th>
+        {% for x in summaries.0.counts %}<th class="px-2 py-2 whitespace-nowrap font-normal text-xs">{{ x.stage.label }}</th>{% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in summaries %}
+      <tr class="border-t border-slate-100 hover:bg-slate-50">
+        <td class="px-3 py-2 whitespace-nowrap">
+          <a class="text-emerald-700 font-medium hover:underline" href="{% url 'campaigns:board' row.campaign.pk %}">{{ row.campaign.name }}</a>
+          <div class="text-xs text-slate-500">{{ row.campaign.client }} · {{ row.campaign.get_status_display }}</div>
+        </td>
+        <td class="px-3 py-2 whitespace-nowrap">{{ row.campaign.manager|default:"-" }}</td>
+        <td class="px-3 py-2 text-center font-semibold">{{ row.open }}</td>
+        <td class="px-3 py-2 text-center font-semibold text-emerald-700">{{ row.confirmed }}</td>
+        {% for x in row.counts %}<td class="px-2 py-2 text-center {% if not x.count %}text-slate-300{% endif %}">{{ x.count }}</td>{% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-sm text-slate-500">진행 중인 캠페인이 없습니다. <a class="text-emerald-700 underline" href="{% url 'admin:campaigns_campaign_add' %}">캠페인 만들기</a></p>
+{% endif %}
+{% endblock %}
