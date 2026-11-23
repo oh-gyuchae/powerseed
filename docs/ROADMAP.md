@@ -152,10 +152,10 @@ class MessagingProvider:
 - 구글 폼 연결·질문 매핑·응답 매칭·옮겨 적기, 개인 설문 링크, 추가 답변 시트 열, `sync_google_forms` 명령
 - ✅ 단위테스트(Forms API는 fake client) / ⏳ 실제 구글 폼으로 연결·응답 반영·미리 채우기 링크 확인
 
-**Phase 4 — 해시태그 수집기 편입 (1~2일, 기존 코드 수령 후)**
-- 기존 수집기를 `collector/adapters/`로 래핑 → HashtagJob task → Candidate 적재
+**Phase 4 — 해시태그 수집기 편입 (1~2일)** ✅ 코드 완료
+- `collector/adapters/` 경계(`COLLECTOR_SCRAPER`로 기존 수집기 연결) → HashtagJob task → Candidate 적재
 - 후보 검토 화면(필터·일괄 승인) → Influencer upsert(handle 기준 중복 제거) + Participation 생성
-- ✅ 해시태그 입력 → 후보 목록 → 승격까지 E2E
+- ✅ 가짜 스크래퍼로 해시태그 입력 → 후보 목록 → 승격까지 E2E 테스트 / ⏳ 기존 수집기 코드 수령 후 실제 수집 확인
 
 **Phase 5 — 메시징: 인스타 DM(Meta API) + Gmail (2~3일)** ✅ 코드 완료
 - `MessagingProvider` 베이스 + InstagramProvider(발송, 24시간 창 검사, 웹훅 확인·서명 검증·수신/에코 저장, IGSID→계정명 매칭) + GmailProvider(SMTP 앱 비밀번호, 발송만)
@@ -166,8 +166,9 @@ class MessagingProvider:
 - fetcher 어댑터(수집기 재사용 or 외부 API), ReelsSnapshot 저장, 계산·주기 task
 - ✅ 고정 fixture로 계산 로직 테스트 + 실계정 1~2개 수동 확인
 
-**Phase 7 — 배포 (1일)**
-- Dockerfile, PostgreSQL, gunicorn + task worker, cron(`sync_google_forms`), HTTPS 도메인, Meta 웹훅 URL 등록
+**Phase 7 — 배포 (1일)** 🔧 설정 완료, 실제 배포 전 (`docs/DEPLOY.md`)
+- Dockerfile, `render.yaml`, PostgreSQL, gunicorn, cron(`sync_google_forms`), HTTPS, Meta 웹훅 URL 등록
+- task worker는 수집기 연결 시 도입 (수집기 보류, 2026-11-24)
 - ✅ 운영 URL에서 E2E 시나리오 1회 (수집→컨택→설문→시트→확정→업로드→지급→고객사용 엑셀 다운로드)
 
 **후순위(MVP 이후)**: Gmail 답장 수신(Gmail API), 카카오/LINE provider, 인스타 7일 Human Agent 태그, 지급 일괄 처리·정산 리포트, 업로드 게시물 성과 추적, 권한 세분화, 고객사 열람용 읽기 전용 링크(파일 전달 대신).

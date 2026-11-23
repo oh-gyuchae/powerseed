@@ -13,6 +13,9 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os
 from pathlib import Path
 
+import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -49,7 +52,14 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-only-chang
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env_bool('DJANGO_DEBUG', default=True)
 
+if not DEBUG and (len(SECRET_KEY) < 50 or SECRET_KEY.startswith('django-insecure-')):
+    raise ImproperlyConfigured('운영 환경에는 50자 이상의 임의 DJANGO_SECRET_KEY가 필요합니다.')
+
 ALLOWED_HOSTS = env_list('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1')
+# Render가 서비스마다 자동으로 넣어 주는 공개 주소
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME', '')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 
 # Application definition
@@ -61,6 +71,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
     # PowerSeed
     'core',
     'influencers',
@@ -68,9 +79,11 @@ INSTALLED_APPS = [
     'sheets',
     'surveys',
     'messaging',
+    'collector',
 ]
 
 MIDDLEWARE = [
+    'core.middleware.HealthCheckMiddleware',  # 호스트 검사·HTTPS 리다이렉트보다 먼저
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -79,6 +92,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+if not DEBUG:
+    MIDDLEWARE.insert(2, 'whitenoise.middleware.WhiteNoiseMiddleware')
 
 ROOT_URLCONF = 'config.urls'
 
@@ -103,8 +118,14 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+if not DEBUG and not DATABASE_URL:
+    raise ImproperlyConfigured('운영 환경에는 DATABASE_URL이 필요합니다.')
+
 DATABASES = {
-    'default': {
+    'default': dj_database_url.parse(DATABASE_URL, conn_max_age=60, conn_health_checks=True)
+    if DATABASE_URL
+    else {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
@@ -146,6 +167,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+if not DEBUG:
+    STORAGES = {
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+    }
 
 
 # Email
@@ -169,6 +196,8 @@ MAILERS = {
         },
     },
 }
+if not DEBUG:
+    MAILERS['default'] = MAILERS['gmail']
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -182,7 +211,9 @@ TASKS = {
 }
 
 # PowerSeed integrations
-SITE_BASE_URL = os.environ.get('SITE_BASE_URL', 'http://127.0.0.1:8000')
+SITE_BASE_URL = (
+    os.environ.get('SITE_BASE_URL') or os.environ.get('RENDER_EXTERNAL_URL') or 'http://127.0.0.1:8000'
+)
 # Google Forms (서비스 계정 JSON, secrets/ 아래에 두기)
 GOOGLE_SERVICE_ACCOUNT_FILE = os.environ.get('GOOGLE_SERVICE_ACCOUNT_FILE', '')
 
@@ -198,6 +229,24 @@ INSTAGRAM_GRAPH_BASE_URL = os.environ.get('INSTAGRAM_GRAPH_BASE_URL', 'https://g
 META_GRAPH_API_VERSION = os.environ.get('META_GRAPH_API_VERSION', 'v23.0')
 META_APP_SECRET = os.environ.get('META_APP_SECRET', '')
 META_WEBHOOK_VERIFY_TOKEN = os.environ.get('META_WEBHOOK_VERIFY_TOKEN', '')
+
+# 해시태그 수집기: collect(hashtag, limit) -> Iterable[dict] 의 import 경로
+COLLECTOR_SCRAPER = os.environ.get('COLLECTOR_SCRAPER', '')
+COLLECTOR_DEFAULT_LIMIT = int(os.environ.get('COLLECTOR_DEFAULT_LIMIT', 200))
+COLLECTOR_MAX_LIMIT = int(os.environ.get('COLLECTOR_MAX_LIMIT', 1000))
+COLLECTOR_MAX_ATTEMPTS = int(os.environ.get('COLLECTOR_MAX_ATTEMPTS', 3))
+COLLECTOR_RETRY_DELAY = float(os.environ.get('COLLECTOR_RETRY_DELAY', 5))  # 초
+
+# 운영 보안 (HTTPS)
+if not DEBUG:
+    # 프록시가 X-Forwarded-Proto를 덮어쓰는 환경(Render 등)에서만 켠다
+    if env_bool('DJANGO_TRUST_PROXY_SSL_HEADER'):
+        SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = env_bool('DJANGO_SECURE_SSL_REDIRECT', default=True)
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # 처음엔 1시간으로 시작하고, HTTPS가 안정적이면 환경변수로 늘린다
+    SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_SECURE_HSTS_SECONDS', 3600))
 
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'campaigns:dashboard'

@@ -1,0 +1,15 @@
+.git
+.gitignore
+.env
+.env.*
+secrets/
+*.service-account.json
+venv/
+.venv/
+db.sqlite3
+__pycache__/
+*.py[cod]
+*.log
+staticfiles/
+media/
+.claude/

@@ -43,6 +43,17 @@ python manage.py runserver
 | `/campaigns/<id>/survey/` | 설문(구글 폼): 폼 연결, 질문·응답 가져오기, 질문 → 플랫폼 칸 매핑, 자동 연결 안 된 응답 수동 연결 |
 | `/participations/<id>/` | 참여 상세: 정보 편집, 단계 변경/재오픈, 변경 이력, **메시지 보내기(인스타 DM/Gmail) · 메시지 이력 · 개인 설문 링크**, 설문 추가 답변 |
 | `/hooks/instagram/` | Meta 웹훅 (인스타 DM 수신). 서명 검증 |
+| `/collector/` | 해시태그 수집 실행, 수집 작업 목록 |
+| `/collector/jobs/<id>/` | 후보 검토: 상태·최소 팔로워 필터, 일괄 승인(캠페인 컨택 대상으로 추가)·제외 |
+
+## 해시태그 수집기 연결
+
+스크래퍼를 `collector/vendor/`에 넣고 `.env`의 `COLLECTOR_SCRAPER`에 함수 경로를 적습니다 (예: `collector.vendor.scraper.collect`).
+- 함수 형식: `collect(hashtag, limit)`가 계정 dict 목록(또는 제너레이터)을 반환합니다.
+- dict 키: `handle`(또는 `username`), `account_name`, `account_url`, `follower_count`
+- 실패하면 `COLLECTOR_MAX_ATTEMPTS`회까지 `COLLECTOR_RETRY_DELAY`초 간격으로 다시 시도합니다.
+- 현재 작업 백엔드는 즉시 실행 방식이라 수집이 끝날 때까지 화면이 기다립니다. 배포 시 worker 백엔드로 교체합니다.
+- 승인 시 기존 인플루언서는 빈 칸만 채우고, 직접 입력한 값은 덮어쓰지 않습니다.
 
 ## 설문 (구글 폼 연동)
 
@@ -115,7 +126,7 @@ python manage.py runserver
 | `sheets` | 플랫폼 안 캠페인 시트(표 화면·행 수정) + 엑셀/CSV 내보내기 | ✅ |
 | `surveys` | 구글 폼 연동: 질문·응답 가져오기, 질문 매핑, 매칭, 옮겨 적기 | ✅ (실제 폼 연결 확인 필요) |
 | `messaging` | 인스타 DM(Meta API) · Gmail 발송, 메시지 템플릿·이력, Meta 웹훅. `messaging/providers/`에 채널 추가 | ✅ (실제 계정 연결 확인 필요) |
-| `collector` | 해시태그 수집기(Python 스크래퍼) 연동 | Phase 4 |
+| `collector` | 해시태그 수집 작업, 후보 검토, 인플루언서·캠페인 승격 | ✅ (실제 스크래퍼 연결 필요) |
 | `metrics` | 한 달 릴스 평균 = 최근 30일 릴스 평균 조회수 자동 산출 | Phase 6 |
 
 ## 진행 단계 (Participation.stage)
@@ -152,10 +163,10 @@ python manage.py runserver
 - [x] Phase 1 — 핵심 모델 + Admin + 단계 전이 서비스
 - [x] Phase 2 — 운영 화면 (캠페인 칸반, 중간관리자 대시보드, 참여 상세)
 - [x] Phase 3 — 캠페인 시트 + 엑셀/CSV 내보내기 + 구글 폼 연동 (코드 완료, **실제 구글 폼으로 확인 필요**)
-- [ ] Phase 4 — 해시태그 수집기 편입 ← **다음 작업**
+- [x] Phase 4 — 해시태그 수집 작업·후보 검토·승격 (코드 완료, **실제 스크래퍼 연결은 보류**)
 - [x] Phase 5 — 메시징: 인스타 DM(Meta API) + Gmail 발송 (코드 완료, **실제 계정으로 확인 필요**)
 - [ ] Phase 6 — 릴스 평균 자동 산출
-- [ ] Phase 7 — 배포 (인스타 웹훅에 공개 HTTPS 필요)
+- [ ] Phase 7 — 배포: 설정 완료, **실제 배포 전** ([docs/DEPLOY.md](docs/DEPLOY.md))
 
 ### 실제 연동 확인에 필요한 것
 - 구글 폼: 서비스 계정 JSON + 테스트용 구글 폼 1개 (서비스 계정을 편집자로 공유)

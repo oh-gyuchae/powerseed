@@ -11,4 +11,5 @@ urlpatterns = [
     path("", include("sheets.urls")),
     path("", include("surveys.urls")),
     path("", include("messaging.urls")),
+    path("", include("collector.urls")),
 ]
