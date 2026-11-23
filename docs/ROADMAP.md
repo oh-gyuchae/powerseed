@@ -166,7 +166,7 @@ class MessagingProvider:
 - fetcher 어댑터(수집기 재사용 or 외부 API), ReelsSnapshot 저장, 계산·주기 task
 - ✅ 고정 fixture로 계산 로직 테스트 + 실계정 1~2개 수동 확인
 
-**Phase 7 — 배포 (1일)** 🔧 설정 완료, 실제 배포 전 (`docs/DEPLOY.md`)
+**Phase 7 — 배포 (1일)** 🔧 Render 가동·로그인 확인, 운영 E2E 확인 남음 (`docs/DEPLOY.md`, 다음 할 일은 `docs/NEXT.md`)
 - Dockerfile, `render.yaml`, PostgreSQL, gunicorn, cron(`sync_google_forms`), HTTPS, Meta 웹훅 URL 등록
 - task worker는 수집기 연결 시 도입 (수집기 보류, 2026-11-24)
 - ✅ 운영 URL에서 E2E 시나리오 1회 (수집→컨택→설문→시트→확정→업로드→지급→고객사용 엑셀 다운로드)

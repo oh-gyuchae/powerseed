@@ -1,6 +1,6 @@
 # PowerSeed — 작업 가이드
 
-인플루언서 시딩 CRM (Django 6.1, Python 3.12+). 설계/로드맵: `docs/ROADMAP.md`. 진행 상황: `README.md`의 로드맵 체크리스트.
+인플루언서 시딩 CRM (Django 6.1, Python 3.12+). 설계/로드맵: `docs/ROADMAP.md`. 진행 상황: `README.md`의 로드맵 체크리스트. **이어서 할 일·시작 명령: `docs/NEXT.md`** (작업을 마치면 갱신).
 
 ## 명령
 - 테스트: `python manage.py test` (외부 API는 mock, 테스트는 각 앱의 `tests/` 패키지)

@@ -7,7 +7,7 @@
 - 사내에서는 플랫폼 안의 **캠페인 시트**로 관리합니다. 고객사에는 시트에서 내려받은 **최종본 파일(엑셀/CSV)**을 전달합니다.
 - 인플루언서 연락은 **인스타 DM(Meta API 직접 연동)**과 **Gmail 발송**으로 합니다.
 
-전체 설계와 단계별 계획은 [docs/ROADMAP.md](docs/ROADMAP.md)를 참고하세요.
+전체 설계와 단계별 계획은 [docs/ROADMAP.md](docs/ROADMAP.md), **이어서 할 일과 작업 시작 명령은 [docs/NEXT.md](docs/NEXT.md)**를 참고하세요.
 
 ## 로컬 실행 (새 기기에서 처음 받을 때)
 
@@ -166,7 +166,7 @@ python manage.py runserver
 - [x] Phase 4 — 해시태그 수집 작업·후보 검토·승격 (코드 완료, **실제 스크래퍼 연결은 보류**)
 - [x] Phase 5 — 메시징: 인스타 DM(Meta API) + Gmail 발송 (코드 완료, **실제 계정으로 확인 필요**)
 - [ ] Phase 6 — 릴스 평균 자동 산출
-- [ ] Phase 7 — 배포: 설정 완료, **실제 배포 전** ([docs/DEPLOY.md](docs/DEPLOY.md))
+- [ ] Phase 7 — 배포: Render 가동·로그인 확인, **운영 E2E 확인 남음** ([docs/DEPLOY.md](docs/DEPLOY.md))
 
 ### 실제 연동 확인에 필요한 것
 - 구글 폼: 서비스 계정 JSON + 테스트용 구글 폼 1개 (서비스 계정을 편집자로 공유)

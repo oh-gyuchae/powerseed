@@ -22,7 +22,7 @@ services:
     runtime: docker
     plan: starter  # 인스타 웹훅을 받으려면 잠들지 않는 유료 플랜 필요
     region: singapore
-    branch: feat/sheet-forms-messaging
+    branch: main
     dockerfilePath: ./Dockerfile
     healthCheckPath: /healthz
     preDeployCommand: python manage.py migrate --noinput
@@ -52,7 +52,7 @@ services:
     runtime: docker
     plan: starter
     region: singapore
-    branch: feat/sheet-forms-messaging
+    branch: main
     dockerfilePath: ./Dockerfile
     schedule: "*/10 * * * *"
     dockerCommand: python manage.py sync_google_forms

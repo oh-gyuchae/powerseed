@@ -3,8 +3,8 @@
 구성은 `render.yaml`에 있습니다: 웹 서비스, PostgreSQL, 10분마다 구글 폼을 동기화하는 cron. 세 서비스 모두 유료 플랜입니다. 금액은 Render 요금 화면에서 확인하세요.
 
 ## 처음 배포
-1. 이 코드를 GitHub `feat/sheet-forms-messaging` 브랜치에 올립니다. 운영 확인 후 `main`에 병합하고 `render.yaml`의 `branch`와 Render 배포 브랜치를 `main`으로 바꿉니다.
-2. Render → **New → Blueprint** → 이 저장소와 위 브랜치를 선택합니다.
+1. 이 코드를 GitHub `main` 브랜치에 올립니다.
+2. Render → **New → Blueprint** → 이 저장소와 `main` 브랜치를 선택합니다. 현재 운영 서비스는 아직 `feat/sheet-forms-messaging`을 배포 중이며, 전환 절차는 [NEXT.md](NEXT.md)에 있습니다.
 3. 입력 칸이 뜨면 Gmail·Meta 값을 넣습니다. 아직 없으면 비워 두고 나중에 웹 서비스 Environment에서 넣어도 됩니다.
 4. 구글 폼을 쓰려면 Environment Group `powerseed-shared`의 **Secret Files**에 `google-service-account.json`을 추가합니다. 웹과 cron이 함께 씁니다.
 5. 배포가 끝나면 웹 서비스 **Shell**에서 관리자 계정을 만듭니다.
