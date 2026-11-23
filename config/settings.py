@@ -52,8 +52,12 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-only-chang
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env_bool('DJANGO_DEBUG', default=True)
 
-if not DEBUG and (len(SECRET_KEY) < 50 or SECRET_KEY.startswith('django-insecure-')):
-    raise ImproperlyConfigured('운영 환경에는 50자 이상의 임의 DJANGO_SECRET_KEY가 필요합니다.')
+if not DEBUG:
+    # Render generateValue는 base64 256비트(44자)이므로 Django 권장 50자 대신 32자를 기준으로 한다
+    if SECRET_KEY.startswith('django-insecure-'):
+        raise ImproperlyConfigured('운영 환경에 DJANGO_SECRET_KEY가 설정되지 않았습니다.')
+    if len(SECRET_KEY) < 32:
+        raise ImproperlyConfigured('DJANGO_SECRET_KEY는 32자 이상의 임의 값이어야 합니다.')
 
 ALLOWED_HOSTS = env_list('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1')
 # Render가 서비스마다 자동으로 넣어 주는 공개 주소
