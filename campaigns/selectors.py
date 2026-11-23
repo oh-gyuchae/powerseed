@@ -81,3 +81,15 @@ def dashboard_alerts(now=None, assignee=None):
         .order_by("survey_sent_at"),
         "payout_waiting": qs.filter(stage__in=[Stage.UPLOADED, Stage.PAYOUT_PENDING]).order_by("uploaded_at"),
     }
+
+
+def sheet_participations(campaign, *, assignee_id=None, stage=None, exclude_closed=False):
+    """Rows for the campaign sheet view / export, in registration order."""
+    qs = campaign.participations.select_related("influencer", "assignee").order_by("pk")
+    if assignee_id:
+        qs = qs.filter(assignee_id=assignee_id)
+    if stage in Stage.values:
+        qs = qs.filter(stage=stage)
+    if exclude_closed:
+        qs = qs.exclude(stage__in=[Stage.DECLINED, Stage.DROPPED])
+    return qs

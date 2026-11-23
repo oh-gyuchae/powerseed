@@ -5,7 +5,10 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from core.utils import parse_id
 from influencers.models import Influencer
+from messaging.views import compose_context, message_history
+from surveys.models import FormQuestion
 
 from . import selectors, services
 from .forms import AddInfluencerForm, ParticipationForm
@@ -47,7 +50,7 @@ def _board_context(campaign, assignee_id=None):
 @login_required
 def campaign_board(request, pk):
     campaign = get_object_or_404(Campaign.objects.select_related("client", "manager"), pk=pk)
-    assignee_id = request.GET.get("assignee") or None
+    assignee_id = parse_id(request.GET.get("assignee"))
     context = _board_context(campaign, assignee_id)
     context.update(
         {
@@ -101,7 +104,7 @@ def participation_change_stage(request, pk):
             error = e.messages[0]
 
     if _is_htmx(request) and request.POST.get("from") == "board":
-        context = _board_context(participation.campaign, request.POST.get("assignee") or None)
+        context = _board_context(participation.campaign, parse_id(request.POST.get("assignee")))
         context["error"] = error
         return render(request, "campaigns/_board.html", context)
 
@@ -133,5 +136,21 @@ def participation_detail(request, pk):
             "form": form,
             "logs": participation.status_logs.select_related("changed_by")[:50],
             "stage_choices": Stage.choices,
+            "survey_answers": _survey_answers(participation),
+            "history": message_history(participation),
+            **compose_context(participation),
         },
     )
+
+
+def _survey_answers(participation):
+    """구글 폼 '추가 답변' 문항의 답 (질문 제목, 답) 목록."""
+    answers = participation.form_answers or {}
+    if not answers:
+        return []
+    titles = dict(
+        FormQuestion.objects.filter(form__campaign=participation.campaign, question_id__in=answers).values_list(
+            "question_id", "title"
+        )
+    )
+    return [(titles.get(qid, "(삭제된 질문)"), value) for qid, value in answers.items()]

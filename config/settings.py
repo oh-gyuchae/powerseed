@@ -65,6 +65,9 @@ INSTALLED_APPS = [
     'core',
     'influencers',
     'campaigns',
+    'sheets',
+    'surveys',
+    'messaging',
 ]
 
 MIDDLEWARE = [
@@ -152,6 +155,19 @@ MAILERS = {
     'default': {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
+    # 인플루언서 발송용 Gmail (SMTP + 앱 비밀번호). 로컬에서 실제 발송 없이 확인하려면
+    # GMAIL_EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+    'gmail': {
+        'BACKEND': os.environ.get('GMAIL_EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend'),
+        'OPTIONS': {
+            'host': 'smtp.gmail.com',
+            'port': 587,
+            'use_tls': True,
+            'username': os.environ.get('GMAIL_ADDRESS', ''),
+            'password': os.environ.get('GMAIL_APP_PASSWORD', ''),
+            'timeout': 20,
+        },
+    },
 }
 
 
@@ -167,9 +183,21 @@ TASKS = {
 
 # PowerSeed integrations
 SITE_BASE_URL = os.environ.get('SITE_BASE_URL', 'http://127.0.0.1:8000')
+# Google Forms (서비스 계정 JSON, secrets/ 아래에 두기)
 GOOGLE_SERVICE_ACCOUNT_FILE = os.environ.get('GOOGLE_SERVICE_ACCOUNT_FILE', '')
-CHANNELTALK_ACCESS_KEY = os.environ.get('CHANNELTALK_ACCESS_KEY', '')
-CHANNELTALK_ACCESS_SECRET = os.environ.get('CHANNELTALK_ACCESS_SECRET', '')
+
+# Gmail 발송
+GMAIL_ADDRESS = os.environ.get('GMAIL_ADDRESS', '')
+GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD', '')
+GMAIL_FROM_NAME = os.environ.get('GMAIL_FROM_NAME', 'PowerSeed')
+
+# Instagram DM (Meta Instagram API, Instagram 로그인 방식)
+INSTAGRAM_ACCESS_TOKEN = os.environ.get('INSTAGRAM_ACCESS_TOKEN', '')
+INSTAGRAM_ACCOUNT_ID = os.environ.get('INSTAGRAM_ACCOUNT_ID', 'me')
+INSTAGRAM_GRAPH_BASE_URL = os.environ.get('INSTAGRAM_GRAPH_BASE_URL', 'https://graph.instagram.com')
+META_GRAPH_API_VERSION = os.environ.get('META_GRAPH_API_VERSION', 'v23.0')
+META_APP_SECRET = os.environ.get('META_APP_SECRET', '')
+META_WEBHOOK_VERIFY_TOKEN = os.environ.get('META_WEBHOOK_VERIFY_TOKEN', '')
 
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'campaigns:dashboard'

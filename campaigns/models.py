@@ -44,8 +44,6 @@ class Campaign(TimeStampedModel):
         on_delete=models.SET_NULL,
         related_name="managed_campaigns",
     )
-    sheet_id = models.CharField("구글 시트 ID", max_length=200, blank=True)
-    worksheet_name = models.CharField("워크시트 이름", max_length=100, blank=True)
 
     class Meta:
         verbose_name = "캠페인"
@@ -90,7 +88,7 @@ CLOSED_STAGES = {Stage.PAID, Stage.DECLINED, Stage.DROPPED}
 
 
 class Participation(TimeStampedModel):
-    """캠페인 × 인플루언서. 파이프라인 1건 = 구글 시트 1행."""
+    """캠페인 × 인플루언서. 파이프라인 1건 = 캠페인 시트 1행."""
 
     class ParticipationStatus(models.TextChoices):
         NO_RESPONSE = "no_response", "미응답"
@@ -156,7 +154,9 @@ class Participation(TimeStampedModel):
 
     survey_token = models.UUIDField("설문 토큰", default=uuid.uuid4, unique=True, editable=False)
     survey_submitted_at = models.DateTimeField("설문 제출일", null=True, blank=True)
-    sheet_row_synced_at = models.DateTimeField("시트 동기화 일시", null=True, blank=True)
+    form_answers = models.JSONField(
+        "설문 추가 답변", default=dict, blank=True, help_text="구글 폼 '추가 답변' 문항: {질문 ID: 답변}"
+    )
 
     notes = models.TextField("비고", blank=True)
     special_notes = models.TextField("특이사항", blank=True)

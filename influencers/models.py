@@ -1,18 +1,45 @@
 import re
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from core.models import TimeStampedModel
 
 
+# 인스타 사용자명 규칙: 영문 소문자·숫자·마침표·밑줄, 최대 30자
+HANDLE_RE = re.compile(r"^[a-z0-9._]{1,30}$")
+# instagram.com/<여기>/ 자리에 오지만 계정이 아닌 경로 (게시물·릴스·탐색 등)
+_NON_PROFILE_PATHS = {"p", "reel", "reels", "tv", "explore", "accounts", "direct", "about", "developer", "legal"}
+
+
 def normalize_handle(value: str) -> str:
-    """'@Foo.Bar', 'https://instagram.com/foo.bar/' -> 'foo.bar'."""
+    """'@Foo.Bar', 'https://instagram.com/foo.bar/' -> 'foo.bar'.
+
+    URLs that don't point at a profile (posts, reels, ...) yield '' — the handle can't be known.
+    Story URLs (instagram.com/stories/<handle>/...) yield the story owner's handle.
+    """
     value = (value or "").strip()
-    match = re.search(r"instagram\.com/([^/?#]+)", value, re.IGNORECASE)
+    match = re.search(r"instagram\.com/([^?#]*)", value, re.IGNORECASE)
     if match:
-        value = match.group(1)
+        segments = [s for s in match.group(1).split("/") if s]
+        if segments and segments[0].lower() == "stories":
+            segments = segments[1:]
+        if not segments or segments[0].lower() in _NON_PROFILE_PATHS:
+            return ""
+        value = segments[0]
     return value.lstrip("@").strip("/").lower()
+
+
+def is_valid_handle(handle: str) -> bool:
+    return bool(HANDLE_RE.fullmatch(handle or ""))
+
+
+def validate_handle(value):
+    if not is_valid_handle(normalize_handle(value)):
+        raise ValidationError(
+            "인스타 계정 형식이 아닙니다. 영문·숫자·마침표·밑줄 30자 이내의 계정명 또는 프로필 URL을 입력하세요."
+        )
 
 
 class Platform(models.TextChoices):
@@ -39,9 +66,14 @@ class Influencer(TimeStampedModel):
     account_name = models.CharField("계정 이름", max_length=100, blank=True)
     platform = models.CharField("플랫폼", max_length=20, choices=Platform.choices, default=Platform.INSTAGRAM)
     instagram_handle = models.CharField(
-        "인스타 계정", max_length=100, unique=True, help_text="@ 없이 소문자로 저장됩니다."
+        "인스타 계정",
+        max_length=100,
+        unique=True,
+        validators=[validate_handle],
+        help_text="@ 없이 소문자로 저장됩니다.",
     )
     account_url = models.URLField("계정 URL", blank=True)
+    email = models.EmailField("이메일", blank=True, help_text="Gmail 발송 대상 (설문 응답으로도 채워짐)")
     follower_count = models.PositiveIntegerField("팔로워 수", null=True, blank=True)
 
     monthly_reels_avg = models.PositiveIntegerField("한 달 릴스 평균 조회수", null=True, blank=True)

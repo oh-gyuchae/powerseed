@@ -1,0 +1,13 @@
+<ol class="space-y-2 text-xs max-h-96 overflow-y-auto">
+  {% for m in history %}
+  <li class="rounded px-2 py-1.5 {% if m.direction == 'in' %}bg-sky-50{% elif m.status == 'failed' %}bg-red-50{% else %}bg-slate-50{% endif %}">
+    <div class="text-slate-500">
+      {{ m.created_at|date:"m/d H:i" }} · {{ m.get_channel_display }} · {{ m.get_direction_display }}{% if m.status == 'failed' %} <b class="text-red-600">실패</b>{% endif %}
+      {% if m.sent_by %} · {{ m.sent_by }}{% endif %}{% if m.participation and m.participation.campaign_id != p.campaign_id %} · {{ m.participation.campaign.name }}{% endif %}
+    </div>
+    {% if m.subject %}<div class="font-medium">{{ m.subject }}</div>{% endif %}
+    <div class="whitespace-pre-line break-words text-slate-800">{{ m.body|truncatechars:400 }}</div>
+    {% if m.error %}<div class="text-red-600">{{ m.error }}</div>{% endif %}
+  </li>
+  {% empty %}<li class="text-slate-400">주고받은 메시지가 없습니다.</li>{% endfor %}
+</ol>

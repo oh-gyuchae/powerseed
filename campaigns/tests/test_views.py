@@ -43,8 +43,26 @@ class PageTests(BaseCase):
         res = self.client.get(reverse("campaigns:board", args=[self.campaign.pk]), {"assignee": other.pk})
         self.assertNotContains(res, "@seed_one")
 
+    def test_board_invalid_assignee_is_ignored(self):
+        res = self.client.get(reverse("campaigns:board", args=[self.campaign.pk]), {"assignee": "abc"})
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "@seed_one")
+
+    def test_board_selected_assignee_option(self):
+        res = self.client.get(reverse("campaigns:board", args=[self.campaign.pk]), {"assignee": self.user.pk})
+        self.assertContains(res, f'<option value="{self.user.pk}" selected>')
+
 
 class StageChangeTests(BaseCase):
+    def test_htmx_invalid_assignee_is_ignored(self):
+        res = self.client.post(
+            reverse("campaigns:change_stage", args=[self.p.pk]),
+            {"stage": Stage.CONTACTED, "from": "board", "assignee": "abc"},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "@seed_one")
+
     def test_htmx_stage_change_returns_board_partial(self):
         res = self.client.post(
             reverse("campaigns:change_stage", args=[self.p.pk]),
@@ -118,6 +136,51 @@ class AddInfluencersTests(BaseCase):
         self.assertEqual(res.status_code, 302)
         handles = set(self.campaign.participations.values_list("influencer__instagram_handle", flat=True))
         self.assertEqual(handles, {"seed_one", "new_one", "new_two"})
+
+    def test_post_or_invalid_entries_are_rejected(self):
+        res = self.client.post(
+            reverse("campaigns:add_influencers", args=[self.campaign.pk]),
+            {"handles": "good_one\nhttps://www.instagram.com/p/ABC123/\n홍 길동"},
+            follow=True,
+        )
+        self.assertContains(res, "인식할 수 없는 항목")
+        self.assertContains(res, "https://www.instagram.com/p/ABC123/")
+        # all-or-nothing: the valid entry is not added either
+        self.assertFalse(Influencer.objects.filter(instagram_handle__in=["good_one", "p"]).exists())
+
+
+class AdminInlineAddTests(BaseCase):
+    def test_inline_add_goes_through_add_to_campaign(self):
+        admin = get_user_model().objects.create_superuser("boss", password="pw-12345")
+        self.client.force_login(admin)
+        newbie = Influencer.objects.create(instagram_handle="newbie")
+        prefix = "participations"
+        data = {
+            "client": self.campaign.client_id,
+            "name": self.campaign.name,
+            "status": self.campaign.status,
+            "default_fee": "80000",
+            f"{prefix}-TOTAL_FORMS": "2",
+            f"{prefix}-INITIAL_FORMS": "1",
+            f"{prefix}-MIN_NUM_FORMS": "0",
+            f"{prefix}-MAX_NUM_FORMS": "1000",
+            f"{prefix}-0-id": self.p.pk,
+            f"{prefix}-0-campaign": self.campaign.pk,
+            f"{prefix}-0-influencer": self.influencer.pk,
+            f"{prefix}-0-participation_status": self.p.participation_status,
+            f"{prefix}-0-payout_status": self.p.payout_status,
+            f"{prefix}-1-campaign": self.campaign.pk,
+            f"{prefix}-1-influencer": newbie.pk,
+            f"{prefix}-1-participation_status": Participation.ParticipationStatus.CONSIDERING,
+            f"{prefix}-1-payout_status": Participation.PayoutStatus.UNPAID,
+        }
+        res = self.client.post(reverse("admin:campaigns_campaign_change", args=[self.campaign.pk]), data)
+        self.assertEqual(res.status_code, 302)
+        p = Participation.objects.get(campaign=self.campaign, influencer=newbie)
+        self.assertEqual(p.fee_amount, 80000)
+        self.assertEqual(p.assignee, admin)
+        self.assertEqual(p.participation_status, Participation.ParticipationStatus.CONSIDERING)
+        self.assertEqual(list(p.status_logs.values_list("to_stage", flat=True)), [Stage.CONTACT_TARGET])
 
 
 class AlertTests(BaseCase):

@@ -12,9 +12,11 @@
     <form method="get" class="text-sm">
       <select name="assignee" onchange="this.form.submit()" class="border rounded px-2 py-1 bg-white">
         <option value="">담당자 전체</option>
-        {% for u in users %}<option value="{{ u.pk }}" {% if assignee_id == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_username }}</option>{% endfor %}
+        {% for u in users %}<option value="{{ u.pk }}" {% if assignee_id == u.pk %}selected{% endif %}>{{ u.get_username }}</option>{% endfor %}
       </select>
     </form>
+    <a href="{% url 'sheets:sheet' campaign.pk %}" class="text-sm bg-white border rounded px-3 py-1 hover:bg-slate-100">시트 · 내보내기</a>
+    <a href="{% url 'surveys:settings' campaign.pk %}" class="text-sm bg-white border rounded px-3 py-1 hover:bg-slate-100">설문(구글 폼)</a>
     <a href="{% url 'admin:campaigns_campaign_change' campaign.pk %}" class="text-sm text-slate-500 hover:text-slate-800">캠페인 수정</a>
   </div>
 </div>

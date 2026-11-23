@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ campaign.name }} 시트{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-start justify-between gap-4 mb-4">
+  <div>
+    <div class="text-sm text-slate-500">{{ campaign.client }} · {{ campaign.get_status_display }}</div>
+    <h1 class="text-2xl font-bold">{{ campaign.name }} <span class="text-base font-normal text-slate-500">시트</span></h1>
+    <a href="{% url 'campaigns:board' campaign.pk %}" class="text-sm text-slate-500 hover:text-slate-800">← 칸반 보기</a>
+  </div>
+  <div class="flex flex-col items-end gap-2 text-sm">
+    <div class="flex items-center gap-2">
+      <span class="text-slate-500">고객사 전달용</span>
+      <a href="{% url 'sheets:export' campaign.pk 'xlsx' %}?{{ query }}&scope=client" class="bg-emerald-600 text-white rounded px-3 py-1.5 hover:bg-emerald-700">엑셀</a>
+      <a href="{% url 'sheets:export' campaign.pk 'csv' %}?{{ query }}&scope=client" class="border border-emerald-600 text-emerald-700 rounded px-3 py-1.5 hover:bg-emerald-50">CSV</a>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="text-slate-500">사내용 (전체 열)</span>
+      <a href="{% url 'sheets:export' campaign.pk 'xlsx' %}?{{ query }}&scope=internal" class="bg-slate-700 text-white rounded px-3 py-1.5 hover:bg-slate-800">엑셀</a>
+      <a href="{% url 'sheets:export' campaign.pk 'csv' %}?{{ query }}&scope=internal" class="border border-slate-400 text-slate-700 rounded px-3 py-1.5 hover:bg-slate-100">CSV</a>
+    </div>
+  </div>
+</div>
+
+<form method="get" class="flex flex-wrap items-center gap-3 mb-3 text-sm">
+  <select name="stage" class="border rounded px-2 py-1 bg-white">
+    <option value="">단계 전체</option>
+    {% for value, label in stage_choices %}<option value="{{ value }}" {% if filters.stage == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  <select name="assignee" class="border rounded px-2 py-1 bg-white">
+    <option value="">담당자 전체</option>
+    {% for u in users %}<option value="{{ u.pk }}" {% if filters.assignee_id == u.pk %}selected{% endif %}>{{ u.get_username }}</option>{% endfor %}
+  </select>
+  <label class="flex items-center gap-1"><input type="checkbox" name="exclude_closed" value="1" {% if filters.exclude_closed %}checked{% endif %}> 거절·이탈 제외</label>
+  <button class="border rounded px-3 py-1 bg-white hover:bg-slate-100">적용</button>
+  <span class="text-slate-500">{{ rows|length }}건 · 내보내기는 현재 필터 기준</span>
+</form>
+
+<div class="overflow-x-auto bg-white border border-slate-200 rounded-lg">
+  <table class="min-w-max text-xs">
+    <thead class="bg-slate-100 text-slate-600">
+      <tr>
+        {% for col in columns %}
+        <th class="text-left px-2 py-2 whitespace-nowrap font-medium {% if forloop.first %}sticky left-0 bg-slate-100{% endif %}">
+          {{ col.label }}{% if col.internal %} <span class="text-[10px] text-amber-700" title="고객사 전달용 파일에서 제외">사내</span>{% endif %}
+        </th>
+        {% endfor %}
+        <th class="px-2 py-2"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}{% include "sheets/_row.html" with p=row.p cells=row.cells %}
+      {% empty %}<tr><td colspan="{{ columns|length|add:1 }}" class="px-3 py-6 text-center text-slate-400">해당하는 인플루언서가 없습니다.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

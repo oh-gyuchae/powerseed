@@ -1,0 +1,17 @@
+<tr id="row-{{ p.pk }}" class="border-t border-emerald-200 bg-emerald-50/50 align-top">
+  {% for cell in cells %}
+  <td class="px-2 py-1.5 {% if forloop.first %}sticky left-0 bg-emerald-50 font-medium{% endif %}">
+    {% if cell.field %}{{ cell.field }}{% for e in cell.field.errors %}<div class="text-red-600 whitespace-normal">{{ e }}</div>{% endfor %}
+    {% elif forloop.first %}@{{ cell.value }}
+    {% else %}<span class="text-slate-500 whitespace-nowrap">{{ cell.value|default:"-" }}</span>{% endif %}
+  </td>
+  {% endfor %}
+  <td class="px-2 py-1.5 whitespace-nowrap">
+    {% if error %}<div class="mb-1 max-w-48 whitespace-normal text-red-600">{{ error }}</div>{% endif %}
+    {% for e in form.non_field_errors %}<div class="mb-1 max-w-48 whitespace-normal text-red-600">{{ e }}</div>{% endfor %}
+    <button type="button" class="bg-emerald-600 text-white rounded px-2 py-0.5 hover:bg-emerald-700"
+            hx-post="{% url 'sheets:row' p.pk %}" hx-include="closest tr" hx-target="closest tr" hx-swap="outerHTML">저장</button>
+    <button type="button" class="text-slate-500 hover:text-slate-800"
+            hx-get="{% url 'sheets:row' p.pk %}" hx-target="closest tr" hx-swap="outerHTML">취소</button>
+  </td>
+</tr>

@@ -13,10 +13,13 @@ class ClientAdmin(admin.ModelAdmin):
     search_fields = ("name",)
 
 
+INLINE_ADD_FIELDS = ("participation_status", "fee_amount", "payout_status", "assignee")
+
+
 class ParticipationInline(admin.TabularInline):
     model = Participation
     extra = 0
-    fields = ("influencer", "stage", "participation_status", "fee_amount", "payout_status", "assignee")
+    fields = ("influencer", "stage", *INLINE_ADD_FIELDS)
     readonly_fields = ("stage",)
     autocomplete_fields = ("influencer",)
     show_change_link = True
@@ -28,6 +31,26 @@ class CampaignAdmin(admin.ModelAdmin):
     list_filter = ("status", "client", "manager")
     search_fields = ("name", "client__name")
     inlines = [ParticipationInline]
+
+    def save_formset(self, request, form, formset, change):
+        if formset.model is not Participation:
+            return super().save_formset(request, form, formset, change)
+        # New rows go through add_to_campaign() so they get the initial StatusLog and default fee.
+        instances = formset.save(commit=False)
+        for obj in formset.deleted_objects:
+            obj.delete()
+        for obj in instances:
+            if obj.pk is None:
+                entered = {f: getattr(obj, f) for f in INLINE_ADD_FIELDS}
+                services.add_to_campaign(
+                    obj.influencer,
+                    form.instance,
+                    user=request.user,
+                    defaults={k: v for k, v in entered.items() if v is not None},
+                )
+            else:
+                obj.save()
+        formset.save_m2m()
 
 
 class StatusLogInline(admin.TabularInline):
@@ -65,7 +88,6 @@ class ParticipationAdmin(admin.ModelAdmin):
         "stage",
         "survey_token",
         "survey_submitted_at",
-        "sheet_row_synced_at",
         "created_at",
         "updated_at",
     )
@@ -92,6 +114,8 @@ class ParticipationAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         is_new = obj.pk is None
+        if is_new and obj.fee_amount is None:
+            obj.fee_amount = obj.campaign.default_fee  # same default as services.add_to_campaign()
         super().save_model(request, obj, form, change)
         if is_new:
             StatusLog.objects.create(participation=obj, to_stage=obj.stage, changed_by=request.user)

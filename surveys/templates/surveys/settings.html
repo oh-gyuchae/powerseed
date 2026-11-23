@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}{{ campaign.name }} 설문{% endblock %}
+{% block content %}
+<div class="mb-4">
+  <div class="text-sm text-slate-500">{{ campaign.client }} · {{ campaign.get_status_display }}</div>
+  <h1 class="text-2xl font-bold">{{ campaign.name }} <span class="text-base font-normal text-slate-500">설문 (구글 폼)</span></h1>
+  <div class="text-sm space-x-3">
+    <a href="{% url 'campaigns:board' campaign.pk %}" class="text-slate-500 hover:text-slate-800">← 칸반</a>
+    <a href="{% url 'sheets:sheet' campaign.pk %}" class="text-slate-500 hover:text-slate-800">시트</a>
+  </div>
+</div>
+
+{% if not cf %}
+<section class="bg-white border border-slate-200 rounded-lg p-4 max-w-3xl">
+  <h2 class="font-semibold mb-2">구글 폼 연결</h2>
+  <ol class="list-decimal pl-5 text-sm text-slate-700 space-y-1 mb-4">
+    <li>구글 폼에서 이 캠페인용 설문을 만듭니다. 질문 추가·수정은 앞으로도 <b>구글 폼에서</b> 하면 됩니다.</li>
+    <li>구글 폼 오른쪽 위 ⋮ → <b>공동작업자 추가</b>에
+      {% if service_account_email %}<code class="bg-slate-100 px-1 rounded select-all">{{ service_account_email }}</code>
+      {% else %}<span class="text-red-600">서비스 계정 이메일(.env의 GOOGLE_SERVICE_ACCOUNT_FILE 미설정)</span>{% endif %}
+      을(를) <b>편집자</b>로 추가합니다.</li>
+    <li>(권장) 단답형 질문 <b>"참여 코드"</b>를 하나 추가합니다. 인플루언서별 링크에 코드가 자동으로 채워져서 응답자가 자동으로 연결됩니다. 없으면 "인스타 계정" 답변으로 연결합니다.</li>
+    <li>편집 화면 주소창의 주소(…/forms/d/…/edit)를 아래에 붙여넣습니다.</li>
+  </ol>
+  <form method="post" action="{% url 'surveys:connect' campaign.pk %}" class="flex gap-2">
+    {% csrf_token %}
+    <input name="form_url" required placeholder="https://docs.google.com/forms/d/…/edit" class="flex-1 border rounded px-2 py-1.5 text-sm">
+    <button class="bg-emerald-600 text-white rounded px-4 py-1.5 text-sm hover:bg-emerald-700">연결</button>
+  </form>
+</section>
+{% else %}
+
+<section class="bg-white border border-slate-200 rounded-lg p-4 mb-6 flex flex-wrap items-start justify-between gap-4">
+  <div class="text-sm space-y-1">
+    <div class="font-semibold text-base">{{ cf.title|default:"(제목 없음)" }}</div>
+    <div class="space-x-3">
+      <a href="{{ cf.edit_url }}" target="_blank" rel="noopener" class="text-emerald-700 underline">구글 폼에서 질문 수정</a>
+      {% if cf.responder_uri %}<a href="{{ cf.responder_uri }}" target="_blank" rel="noopener" class="text-emerald-700 underline">응답 화면 보기</a>{% endif %}
+    </div>
+    <div class="text-slate-500">마지막 동기화: {{ cf.synced_at|date:"Y-m-d H:i"|default:"아직 없음" }} · 응답 {{ response_count }}건</div>
+    {% if cf.last_error %}<div class="text-red-600">오류: {{ cf.last_error }}</div>{% endif %}
+    {% if not has_code_question %}<div class="text-amber-700">"참여 코드" 문항이 없어 응답자를 인스타 계정 답변으로만 연결합니다.</div>{% endif %}
+  </div>
+  <form method="post" action="{% url 'surveys:sync' campaign.pk %}">
+    {% csrf_token %}
+    <button class="bg-emerald-600 text-white rounded px-4 py-2 text-sm hover:bg-emerald-700">질문·응답 가져오기</button>
+    <div class="text-xs text-slate-400 mt-1">구글 폼에서 질문을 고친 뒤에도 누르세요</div>
+  </form>
+</section>
+
+<section class="bg-white border border-slate-200 rounded-lg p-4 mb-6">
+  <h2 class="font-semibold mb-1">질문 → 플랫폼 칸 매핑</h2>
+  <p class="text-xs text-slate-500 mb-3">새 질문은 제목을 보고 자동으로 지정됩니다. "추가 답변"은 캠페인 시트에 열로 추가됩니다.</p>
+  <form method="post" action="{% url 'surveys:questions' campaign.pk %}">
+    {% csrf_token %}
+    <table class="w-full text-sm">
+      <thead class="text-left text-slate-500 text-xs"><tr><th class="py-1">질문</th><th>유형</th><th>옮겨 적을 칸</th><th class="text-center">고객사 파일</th></tr></thead>
+      <tbody>
+        {% for q in questions %}
+        <tr class="border-t border-slate-100">
+          <td class="py-1.5 pr-3">{{ q.title }}{% if q.options %}<div class="text-xs text-slate-400">{{ q.options|join:" / "|truncatechars:80 }}</div>{% endif %}</td>
+          <td class="text-xs text-slate-500 pr-3">{{ q.kind }}</td>
+          <td class="pr-3">
+            <select name="target_{{ q.pk }}" class="border rounded px-2 py-1 text-sm bg-white">
+              {% for value, label in target_choices %}<option value="{{ value }}" {% if q.target == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+          </td>
+          <td class="text-center"><input type="checkbox" name="client_{{ q.pk }}" value="1" {% if q.include_in_client_export %}checked{% endif %} title="추가 답변 열을 고객사 전달용 파일에 포함"></td>
+        </tr>
+        {% empty %}<tr><td colspan="4" class="py-3 text-slate-400">질문이 없습니다. "질문·응답 가져오기"를 눌러 주세요.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+    {% if questions %}
+    <div class="mt-3 flex gap-2">
+      <button class="bg-slate-800 text-white rounded px-4 py-1.5 text-sm hover:bg-slate-900">저장</button>
+      <button name="reapply" value="1" class="border border-slate-400 rounded px-4 py-1.5 text-sm hover:bg-slate-100"
+              onclick="return confirm('저장된 응답을 모두 다시 옮겨 적습니다. 시트에서 직접 고친 값(희망 원고료·특이사항 등)이 응답 내용으로 덮어써질 수 있습니다. 계속할까요?')">저장 후 전체 다시 반영</button>
+    </div>
+    {% endif %}
+  </form>
+  {% if removed_questions %}
+  <p class="mt-3 text-xs text-slate-400">구글 폼에서 삭제된 질문: {% for q in removed_questions %}{{ q.title }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+  {% endif %}
+</section>
+
+<section class="bg-white border border-slate-200 rounded-lg p-4">
+  <h2 class="font-semibold mb-3">연결이 필요한 응답 <span class="text-sm font-normal text-slate-500">{{ unmatched|length }}건</span></h2>
+  <div class="space-y-3">
+    {% for resp in unmatched %}
+    <div class="border border-slate-200 rounded p-3 text-sm">
+      <div class="text-xs text-slate-500 mb-1">{{ resp.submitted_at|date:"Y-m-d H:i" }} 제출{% if resp.respondent_handle %} · 응답자 계정 <b>@{{ resp.respondent_handle }}</b>{% endif %}</div>
+      <dl class="grid sm:grid-cols-2 gap-x-4 text-xs mb-2">
+        {% for title, value in resp.preview %}<div><dt class="inline text-slate-500">{{ title|truncatechars:30 }}:</dt> <dd class="inline">{{ value|default:"-" }}</dd></div>{% endfor %}
+      </dl>
+      <form method="post" action="{% url 'surveys:link_response' campaign.pk resp.pk %}" class="flex flex-wrap items-center gap-2">
+        {% csrf_token %}
+        <select name="participation" class="border rounded px-2 py-1 bg-white">
+          <option value="">캠페인 인플루언서 선택…</option>
+          {% for p in participations %}<option value="{{ p.pk }}">{{ p.influencer }}</option>{% endfor %}
+        </select>
+        <button class="border rounded px-3 py-1 hover:bg-slate-100">연결</button>
+        {% if resp.respondent_handle %}
+        <button name="action" value="create" class="border border-emerald-600 text-emerald-700 rounded px-3 py-1 hover:bg-emerald-50">@{{ resp.respondent_handle }} 새로 추가하여 연결</button>
+        {% endif %}
+      </form>
+    </div>
+    {% empty %}<p class="text-sm text-slate-400">모든 응답이 연결되었습니다.</p>{% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

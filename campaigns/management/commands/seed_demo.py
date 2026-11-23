@@ -11,6 +11,7 @@ from django.utils import timezone
 from campaigns import services
 from campaigns.models import PIPELINE, Campaign, Client, Stage
 from influencers.models import Influencer
+from messaging.models import MessageTemplate
 
 
 class Command(BaseCommand):
@@ -31,6 +32,19 @@ class Command(BaseCommand):
             admin.set_password("admin")
             admin.save()
             self.stdout.write("관리자 계정 생성: admin / admin")
+
+        MessageTemplate.objects.get_or_create(
+            name="설문 안내",
+            defaults={
+                "subject": "[{{캠페인}}] 참여 설문 부탁드립니다",
+                "body": (
+                    "안녕하세요 {{이름}}님!\n"
+                    "{{캠페인}} 시딩 관련해서 아래 설문 작성 부탁드려요.\n"
+                    "{{설문링크}}\n"
+                    "감사합니다."
+                ),
+            },
+        )
 
         client, _ = Client.objects.get_or_create(name="데모 고객사")
         campaign, created = Campaign.objects.get_or_create(

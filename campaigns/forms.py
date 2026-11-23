@@ -69,11 +69,18 @@ class AddInfluencerForm(forms.Form):
     )
 
     def clean_handles(self):
-        from influencers.models import normalize_handle
+        from influencers.models import is_valid_handle, normalize_handle
 
         raw = self.cleaned_data["handles"].replace(",", "\n")
-        handles = [normalize_handle(h) for h in raw.splitlines()]
-        handles = list(dict.fromkeys(h for h in handles if h))
+        entries = [e.strip() for e in raw.splitlines() if e.strip()]
+        invalid = [e for e in entries if not is_valid_handle(normalize_handle(e))]
+        if invalid:
+            raise forms.ValidationError(
+                "인스타 계정으로 인식할 수 없는 항목이 있습니다 (게시물·릴스 링크는 불가, 프로필 URL 또는 계정명): "
+                + ", ".join(invalid[:10])
+                + (f" 외 {len(invalid) - 10}개" if len(invalid) > 10 else "")
+            )
+        handles = list(dict.fromkeys(normalize_handle(e) for e in entries))
         if not handles:
             raise forms.ValidationError("계정을 하나 이상 입력하세요.")
         return handles

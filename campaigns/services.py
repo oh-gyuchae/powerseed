@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from .models import CLOSED_STAGES, Participation, Stage, StatusLog
+from .models import CLOSED_STAGES, PIPELINE, Participation, Stage, StatusLog
 
 
 @transaction.atomic
@@ -29,6 +29,26 @@ def change_stage(participation: Participation, to_stage: str, *, user=None, memo
     participation.stage = to_stage
     update_fields = ["stage", "updated_at"]
 
+    # 되돌리기(재오픈) 정책: 파이프라인 앞 단계로 돌아가면 그 이후에 기록된 사실을 지운다.
+    # 거절/이탈로 가는 경우는 되돌리기가 아니므로 기록을 유지한다.
+    if to_stage in PIPELINE:
+        position = PIPELINE.index(to_stage)
+        if position < PIPELINE.index(Stage.PAID) and participation.paid_at:
+            participation.paid_at = None
+            update_fields.append("paid_at")
+        if position < PIPELINE.index(Stage.PAYOUT_PENDING) and (
+            participation.payout_status != Participation.PayoutStatus.UNPAID
+        ):
+            participation.payout_status = Participation.PayoutStatus.UNPAID
+            update_fields.append("payout_status")
+        if position < PIPELINE.index(Stage.UPLOADED) and participation.uploaded_at:
+            participation.uploaded_at = None
+            update_fields.append("uploaded_at")
+    if from_stage == Stage.DECLINED:
+        participation.participation_status = Participation.ParticipationStatus.NO_RESPONSE
+        update_fields.append("participation_status")
+
+    # 도착 단계에 맞춰 연관 필드 동기화 (재오픈 초기화보다 우선)
     if to_stage == Stage.DECLINED:
         participation.participation_status = Participation.ParticipationStatus.NO
         update_fields.append("participation_status")
@@ -54,12 +74,16 @@ def change_stage(participation: Participation, to_stage: str, *, user=None, memo
 
 
 @transaction.atomic
-def add_to_campaign(influencer, campaign, *, user=None) -> tuple[Participation, bool]:
-    """Register an influencer as a contact target for a campaign (idempotent)."""
+def add_to_campaign(influencer, campaign, *, user=None, defaults=None) -> tuple[Participation, bool]:
+    """Register an influencer as a contact target for a campaign (idempotent).
+
+    `defaults` overrides initial field values, and is only applied when a new row is created.
+    """
+    initial = {"assignee": user, "fee_amount": campaign.default_fee}
+    initial.update(defaults or {})
+    initial.pop("stage", None)  # always starts at CONTACT_TARGET; use change_stage() afterwards
     participation, created = Participation.objects.get_or_create(
-        campaign=campaign,
-        influencer=influencer,
-        defaults={"assignee": user, "fee_amount": campaign.default_fee},
+        campaign=campaign, influencer=influencer, defaults=initial
     )
     if created:
         StatusLog.objects.create(

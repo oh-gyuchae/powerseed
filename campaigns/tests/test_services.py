@@ -4,7 +4,7 @@ from django.db import IntegrityError
 from django.test import TestCase
 
 from campaigns import services
-from campaigns.models import Campaign, Client, Participation, Stage, StatusLog
+from campaigns.models import PIPELINE, Campaign, Client, Participation, Stage, StatusLog
 from influencers.models import Influencer
 
 
@@ -56,6 +56,64 @@ class PipelineTests(TestCase):
             services.change_stage(p, Stage.CONTACTED)
         services.change_stage(p, Stage.CONTACTED, force=True)
         self.assertEqual(p.stage, Stage.CONTACTED)
+
+    def _walk_to(self, p, last):
+        for stage in PIPELINE[1 : PIPELINE.index(last) + 1]:
+            services.change_stage(p, stage)
+
+    def test_reopen_paid_clears_paid_at_only(self):
+        p, _ = services.add_to_campaign(self.influencer, self.campaign)
+        self._walk_to(p, Stage.PAID)
+        services.change_stage(p, Stage.PAYOUT_PENDING, force=True)
+        p.refresh_from_db()
+        self.assertIsNone(p.paid_at)
+        self.assertEqual(p.payout_status, Participation.PayoutStatus.PENDING)
+        self.assertIsNotNone(p.uploaded_at)  # 업로드 이후 단계이므로 유지
+
+    def test_reopen_before_upload_clears_uploaded_at_and_paid_at(self):
+        p, _ = services.add_to_campaign(self.influencer, self.campaign)
+        self._walk_to(p, Stage.PAID)
+        services.change_stage(p, Stage.VISITED, force=True)
+        p.refresh_from_db()
+        self.assertIsNone(p.paid_at)
+        self.assertIsNone(p.uploaded_at)
+        self.assertEqual(p.payout_status, Participation.PayoutStatus.UNPAID)
+
+    def test_back_from_payout_pending_resets_payout_status(self):
+        p, _ = services.add_to_campaign(self.influencer, self.campaign)
+        self._walk_to(p, Stage.PAYOUT_PENDING)
+        services.change_stage(p, Stage.UPLOADED)
+        p.refresh_from_db()
+        self.assertEqual(p.payout_status, Participation.PayoutStatus.UNPAID)
+        self.assertIsNotNone(p.uploaded_at)
+
+    def test_reupload_gets_new_uploaded_at(self):
+        p, _ = services.add_to_campaign(self.influencer, self.campaign)
+        self._walk_to(p, Stage.UPLOADED)
+        services.change_stage(p, Stage.VISITED)
+        services.change_stage(p, Stage.UPLOADED)
+        self.assertIsNotNone(p.uploaded_at)
+
+    def test_drop_after_upload_keeps_records(self):
+        p, _ = services.add_to_campaign(self.influencer, self.campaign)
+        self._walk_to(p, Stage.UPLOADED)
+        services.change_stage(p, Stage.DROPPED)
+        p.refresh_from_db()
+        self.assertIsNotNone(p.uploaded_at)
+
+    def test_reopen_declined_resets_participation_status(self):
+        p, _ = services.add_to_campaign(self.influencer, self.campaign)
+        services.change_stage(p, Stage.DECLINED)
+        services.change_stage(p, Stage.CONTACTED, force=True)
+        p.refresh_from_db()
+        self.assertEqual(p.participation_status, Participation.ParticipationStatus.NO_RESPONSE)
+
+    def test_reopen_declined_straight_to_confirmed_sets_yes(self):
+        p, _ = services.add_to_campaign(self.influencer, self.campaign)
+        services.change_stage(p, Stage.DECLINED)
+        services.change_stage(p, Stage.CONFIRMED, force=True)
+        p.refresh_from_db()
+        self.assertEqual(p.participation_status, Participation.ParticipationStatus.YES)
 
     def test_same_stage_is_noop(self):
         p, _ = services.add_to_campaign(self.influencer, self.campaign)

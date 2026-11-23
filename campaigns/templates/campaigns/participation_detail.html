@@ -40,6 +40,15 @@
         </div>
       </form>
     </section>
+
+    {% if survey_answers %}
+    <section class="bg-white border border-slate-200 rounded-lg p-4">
+      <h2 class="font-semibold mb-3">설문 추가 답변</h2>
+      <dl class="grid gap-2 sm:grid-cols-2 text-sm">
+        {% for title, value in survey_answers %}<div><dt class="text-xs text-slate-500">{{ title }}</dt><dd class="whitespace-pre-line">{{ value }}</dd></div>{% endfor %}
+      </dl>
+    </section>
+    {% endif %}
   </div>
 
   <aside class="space-y-6">
@@ -58,9 +67,20 @@
       </form>
       <dl class="mt-4 text-xs text-slate-500 space-y-1">
         <div>지급 상태: <span class="text-slate-800">{{ p.get_payout_status_display }}</span>{% if p.paid_at %} ({{ p.paid_at|date:"Y-m-d" }}){% endif %}</div>
-        <div>설문 제출: {{ p.survey_submitted_at|date:"Y-m-d H:i"|default:"-" }}</div>
+        <div>설문 제출: {{ p.survey_submitted_at|date:"Y-m-d H:i"|default:"-" }}
+          · <a href="{% url 'surveys:settings' p.campaign.pk %}" class="underline hover:text-slate-800">설문 설정</a></div>
         <div>업로드: {{ p.uploaded_at|date:"Y-m-d H:i"|default:"-" }}</div>
       </dl>
+    </section>
+
+    <section class="bg-white border border-slate-200 rounded-lg p-4">
+      <h2 class="font-semibold mb-3">메시지 보내기</h2>
+      {% include "messaging/_compose.html" %}
+    </section>
+
+    <section class="bg-white border border-slate-200 rounded-lg p-4">
+      <h2 class="font-semibold mb-3">메시지 이력</h2>
+      {% include "messaging/_history.html" %}
     </section>
 
     <section class="bg-white border border-slate-200 rounded-lg p-4">
