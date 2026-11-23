@@ -7,15 +7,10 @@
 ### 이 저장소가 이미 있는 PC
 ```powershell
 cd C:\dev\powerseed
-git fetch origin
-git switch main
-git pull --ff-only origin main
-venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py test
-python manage.py runserver
+.\start.ps1            # 최신 코드 받기 → 가상환경 → 패키지·DB → 서버 실행
+.\start.ps1 -NoServer  # 서버 없이 작업 준비만
 ```
+커밋하지 않은 변경이 있으면 코드를 받지 않고 경고만 표시합니다.
 
 ### 새 PC
 ```powershell
