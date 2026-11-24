@@ -17,7 +17,8 @@
 </section>
 
 <h2 class="text-lg font-semibold mb-2">진행 중 캠페인</h2>
-{% if summaries %}
+{% for group in summaries %}
+<h3 class="text-sm font-semibold text-slate-600 mt-4 mb-1">{{ group.kind.label }}</h3>
 <div class="overflow-x-auto bg-white border border-slate-200 rounded-lg">
   <table class="min-w-full text-sm">
     <thead class="bg-slate-100 text-slate-600">
@@ -25,12 +26,12 @@
         <th class="text-left px-3 py-2 whitespace-nowrap">캠페인</th>
         <th class="text-left px-3 py-2 whitespace-nowrap">책임자</th>
         <th class="px-3 py-2 whitespace-nowrap">진행중</th>
-        <th class="px-3 py-2 whitespace-nowrap">확정 이상</th>
-        {% for x in summaries.0.counts %}<th class="px-2 py-2 whitespace-nowrap font-normal text-xs">{{ x.stage.label }}</th>{% endfor %}
+        <th class="px-3 py-2 whitespace-nowrap">{% if group.kind == 'shipping' %}계약 이상{% else %}확정 이상{% endif %}</th>
+        {% for stage in group.stages %}<th class="px-2 py-2 whitespace-nowrap font-normal text-xs">{{ stage.label }}</th>{% endfor %}
       </tr>
     </thead>
     <tbody>
-      {% for row in summaries %}
+      {% for row in group.rows %}
       <tr class="border-t border-slate-100 hover:bg-slate-50">
         <td class="px-3 py-2 whitespace-nowrap">
           <a class="text-emerald-700 font-medium hover:underline" href="{% url 'campaigns:board' row.campaign.pk %}">{{ row.campaign.name }}</a>
@@ -45,7 +46,7 @@
     </tbody>
   </table>
 </div>
-{% else %}
+{% empty %}
 <p class="text-sm text-slate-500">진행 중인 캠페인이 없습니다. <a class="text-emerald-700 underline" href="{% url 'admin:campaigns_campaign_add' %}">캠페인 만들기</a></p>
-{% endif %}
+{% endfor %}
 {% endblock %}

@@ -1,12 +1,15 @@
-<article class="bg-white rounded border border-slate-200 p-2 text-sm {% if closed_card %}opacity-70{% endif %}">
+<article class="bg-white rounded border p-2 text-sm {% if p.is_upload_overdue %}border-red-400 bg-red-50{% else %}border-slate-200{% endif %} {% if closed_card %}opacity-70{% endif %}">
   <a href="{% url 'campaigns:participation' p.pk %}" class="font-medium hover:text-emerald-700 break-all">{{ p.influencer }}</a>
   {% if p.influencer.account_name %}<span class="text-xs text-slate-500">{{ p.influencer.account_name }}</span>{% endif %}
   <dl class="mt-1 grid grid-cols-2 gap-x-2 text-xs text-slate-600">
     <dt>팔로워</dt><dd class="text-right">{{ p.influencer.follower_count|default_if_none:"-" }}</dd>
     <dt>릴스 평균</dt><dd class="text-right">{{ p.influencer.monthly_reels_avg|default_if_none:"-" }}</dd>
-    <dt>원고료</dt><dd class="text-right">{% if p.fee_amount is not None %}{{ p.fee_amount }}원{% else %}-{% endif %}</dd>
+    <dt>원고료</dt><dd class="text-right">{% if p.fee_amount is not None %}{{ p.fee_amount }}{% if p.fee_currency == 'KRW' %}원{% else %} {{ p.fee_currency }}{% endif %}{% else %}-{% endif %}</dd>
     {% if p.confirmed_visit_at %}<dt>방문</dt><dd class="text-right">{{ p.confirmed_visit_at|date:"m/d H:i" }}</dd>{% endif %}
+    {% if p.influencer.country %}<dt>국가</dt><dd class="text-right">{{ p.influencer.get_country_display }}</dd>{% endif %}
+    {% if p.upload_due_at and not p.uploaded_at %}<dt>업로드 예정</dt><dd class="text-right {% if p.is_upload_overdue %}text-red-600 font-medium{% endif %}">{{ p.upload_due_at|date:"m/d" }}</dd>{% endif %}
   </dl>
+  {% if p.next_action %}<div class="mt-1 text-xs text-amber-800">▶ {{ p.next_action }}</div>{% endif %}
   <div class="mt-1 text-xs text-slate-400">{{ p.assignee|default:"담당자 없음" }}</div>
   {% if closed_card %}
   <div class="mt-1 text-xs text-slate-500">{{ p.get_stage_display }}</div>

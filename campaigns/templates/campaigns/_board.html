@@ -14,7 +14,7 @@
       {% endfor %}
       <section class="w-60 shrink-0 bg-slate-200/60 rounded-lg">
         <h2 class="px-3 py-2 text-sm font-semibold flex justify-between text-slate-500">
-          <span>거절 · 이탈</span><span>{{ closed|length }}</span>
+          <span>{% if campaign.is_shipping %}거절 · 무응답 · 이탈{% else %}거절 · 이탈{% endif %}</span><span>{{ closed|length }}</span>
         </h2>
         <div class="px-2 pb-2 space-y-2">
           {% for p in closed %}{% include "campaigns/_card.html" with closed_card=True %}{% endfor %}

@@ -84,6 +84,8 @@ INSTALLED_APPS = [
     'surveys',
     'messaging',
     'collector',
+    'performance',
+    'payments',
 ]
 
 MIDDLEWARE = [

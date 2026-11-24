@@ -105,18 +105,27 @@ def upsert_influencer(candidate: Candidate, user=None) -> Influencer:
 
 
 @transaction.atomic
-def approve_candidates(candidates, campaign, *, user=None) -> tuple[int, int]:
-    """승인 → 인플루언서 upsert + 컨택 대상 추가. (새로 추가, 이미 캠페인에 있음)"""
-    added = existing = 0
+def approve_candidates(candidates, campaign, *, user=None) -> tuple[int, int, int]:
+    """승인 → 인플루언서 upsert + 컨택 대상 추가. (새로 추가, 이미 캠페인에 있음, 블랙리스트라 제외)
+
+    블랙리스트 인플루언서 후보는 캠페인에 넣지 않고 '제외' 처리한다.
+    """
+    added = existing = blacklisted = 0
     for candidate in candidates.select_related("job"):
         influencer = upsert_influencer(candidate, user=user)
+        if influencer.is_blacklisted and not campaign.participations.filter(influencer=influencer).exists():
+            blacklisted += 1
+            candidate.influencer = influencer
+            candidate.review_status = Candidate.ReviewStatus.REJECTED
+            candidate.save(update_fields=["influencer", "review_status", "updated_at"])
+            continue
         _, created = add_to_campaign(influencer, campaign, user=user)
         added += created
         existing += not created
         candidate.influencer = influencer
         candidate.review_status = Candidate.ReviewStatus.APPROVED
         candidate.save(update_fields=["influencer", "review_status", "updated_at"])
-    return added, existing
+    return added, existing, blacklisted
 
 
 def reject_candidates(candidates) -> int:

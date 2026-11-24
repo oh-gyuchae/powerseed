@@ -1,6 +1,6 @@
-<tr id="row-{{ p.pk }}" class="border-t border-slate-100 hover:bg-slate-50 align-top {% if p.stage == 'declined' or p.stage == 'dropped' %}text-slate-400{% endif %}">
+<tr id="row-{{ p.pk }}" class="border-t align-top {% if p.is_upload_overdue %}bg-red-50 border-red-200 hover:bg-red-100{% else %}border-slate-100 hover:bg-slate-50{% endif %} {% if p.stage == 'declined' or p.stage == 'dropped' or p.stage == 'no_response' %}text-slate-400{% endif %}"{% if p.is_upload_overdue %} title="업로드 예정일이 지났습니다"{% endif %}>
   {% for cell in cells %}
-  <td class="px-2 py-1.5 {% if forloop.first %}sticky left-0 bg-white font-medium{% endif %} {% if cell.col.width > 20 %}max-w-64 break-all{% else %}whitespace-nowrap{% endif %}">
+  <td class="px-2 py-1.5 {% if forloop.first %}sticky left-0 font-medium {% if p.is_upload_overdue %}bg-red-50{% else %}bg-white{% endif %}{% endif %} {% if cell.col.width > 20 %}max-w-64 break-all{% else %}whitespace-nowrap{% endif %}">
     {% if cell.col.key == "instagram_handle" %}<a href="{% url 'campaigns:participation' p.pk %}" class="hover:text-emerald-700">@{{ cell.value }}</a>
     {% elif cell.col.key == "account_url" or cell.col.key == "upload_url" %}{% if cell.value %}<a href="{{ cell.value }}" target="_blank" rel="noopener" class="text-emerald-700 underline">{{ cell.value }}</a>{% else %}-{% endif %}
     {% else %}{{ cell.value|default:"-"|linebreaksbr }}{% endif %}

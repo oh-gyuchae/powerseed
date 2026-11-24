@@ -2,17 +2,15 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
-from django.utils.http import content_disposition_header
 
 from campaigns import selectors, services
 from campaigns.models import Campaign, Participation, Stage
 from core.utils import parse_id
 
 from .columns import SCOPE_CLIENT, SCOPE_INTERNAL, campaign_columns, columns_for, display_screen
-from .exports import to_csv, to_xlsx
+from .exports import export_response
 from .forms import SheetRowForm
 
 
@@ -21,6 +19,7 @@ def _filters(params):
         "assignee_id": parse_id(params.get("assignee")),
         "stage": params.get("stage") if params.get("stage") in Stage.values else None,
         "exclude_closed": params.get("exclude_closed") == "1",
+        "overdue": params.get("overdue") == "1",
     }
 
 
@@ -34,11 +33,12 @@ def _cells(p, columns, form=None):
     return cells
 
 
-def _row(request, p, form=None, error=None):
+def _row(request, p, form=None, error=None, columns=None):
+    columns = columns or campaign_columns(p.campaign)
     return render(
         request,
         "sheets/_row_form.html" if form is not None else "sheets/_row.html",
-        {"p": p, "cells": _cells(p, campaign_columns(p.campaign), form), "form": form, "error": error},
+        {"p": p, "cells": _cells(p, columns, form), "form": form, "error": error},
     )
 
 
@@ -57,7 +57,7 @@ def campaign_sheet(request, pk):
             "rows": rows,
             "filters": filters,
             "query": request.GET.urlencode(),
-            "stage_choices": Stage.choices,
+            "stage_choices": campaign.stage_choices,
             "users": get_user_model().objects.filter(is_active=True).order_by("username"),
         },
     )
@@ -67,12 +67,14 @@ def campaign_sheet(request, pk):
 def sheet_row(request, pk):
     """GET: 보기 행 / GET ?edit=1: 수정 행 / POST: 저장 후 보기 행 (HTMX 부분 갱신)."""
     p = get_object_or_404(Participation.objects.select_related("campaign", "influencer", "assignee"), pk=pk)
+    columns = campaign_columns(p.campaign)
     if request.method == "GET":
-        return _row(request, p, SheetRowForm(instance=p) if request.GET.get("edit") == "1" else None)
+        form = SheetRowForm(instance=p, columns=columns) if request.GET.get("edit") == "1" else None
+        return _row(request, p, form, columns=columns)
 
-    form = SheetRowForm(request.POST, instance=p)
+    form = SheetRowForm(request.POST, instance=p, columns=columns)
     if not form.is_valid():
-        return _row(request, p, form)
+        return _row(request, p, form, columns=columns)
     try:
         with transaction.atomic():
             new_stage = form.cleaned_data["stage"]
@@ -81,8 +83,9 @@ def sheet_row(request, pk):
             form.save()
     except ValidationError as e:
         p.refresh_from_db()
-        return _row(request, p, form, error=f"{e.messages[0]} 재오픈은 참여 상세 화면에서 하세요.")
-    return _row(request, p)
+        error = f"{e.messages[0]} 재오픈은 참여 상세 화면에서 하세요."
+        return _row(request, p, form, error=error, columns=columns)
+    return _row(request, p, columns=columns)
 
 
 @login_required
@@ -93,15 +96,12 @@ def campaign_export(request, pk, fmt):
     participations = selectors.sheet_participations(campaign, **_filters(request.GET))
 
     suffix = "사내용" if scope == SCOPE_INTERNAL else "고객사"
-    filename = f"{campaign.name}_{suffix}_{timezone.localdate():%Y%m%d}.{fmt}"
-    if fmt == "xlsx":
-        body = to_xlsx(participations, columns, title=campaign.name)
-        content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    else:
-        body = to_csv(participations, columns)
-        content_type = "text/csv; charset=utf-8"
-    return HttpResponse(
-        body,
-        content_type=content_type,
-        headers={"Content-Disposition": content_disposition_header(True, filename)},
+    return export_response(
+        participations,
+        columns,
+        fmt,
+        filename=f"{campaign.name}_{suffix}_{timezone.localdate():%Y%m%d}",
+        title=campaign.name,
+        # 업로드 예정일 경과 행은 사내용 파일에서만 빨갛게 표시
+        highlight=(lambda p: p.is_upload_overdue) if scope == SCOPE_INTERNAL else None,
     )

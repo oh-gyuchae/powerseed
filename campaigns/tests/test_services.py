@@ -4,7 +4,9 @@ from django.db import IntegrityError
 from django.test import TestCase
 
 from campaigns import services
-from campaigns.models import PIPELINE, Campaign, Client, Participation, Stage, StatusLog
+from campaigns.models import PIPELINES, Campaign, CampaignKind, Client, Participation, Stage, StatusLog
+
+PIPELINE = PIPELINES[CampaignKind.VISIT]
 from influencers.models import Influencer
 
 

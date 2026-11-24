@@ -3,7 +3,7 @@
 {% block content %}
 <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
   <div>
-    <div class="text-sm text-slate-500">{{ campaign.client }} · {{ campaign.get_status_display }}</div>
+    <div class="text-sm text-slate-500">{{ campaign.client }} · {{ campaign.get_kind_display }} · {{ campaign.get_status_display }}</div>
     <h1 class="text-2xl font-bold">{{ campaign.name }} <span class="text-base font-normal text-slate-500">시트</span></h1>
     <a href="{% url 'campaigns:board' campaign.pk %}" class="text-sm text-slate-500 hover:text-slate-800">← 칸반 보기</a>
   </div>
@@ -30,9 +30,10 @@
     <option value="">담당자 전체</option>
     {% for u in users %}<option value="{{ u.pk }}" {% if filters.assignee_id == u.pk %}selected{% endif %}>{{ u.get_username }}</option>{% endfor %}
   </select>
-  <label class="flex items-center gap-1"><input type="checkbox" name="exclude_closed" value="1" {% if filters.exclude_closed %}checked{% endif %}> 거절·이탈 제외</label>
+  <label class="flex items-center gap-1"><input type="checkbox" name="exclude_closed" value="1" {% if filters.exclude_closed %}checked{% endif %}> 거절·이탈{% if campaign.is_shipping %}·무응답{% endif %} 제외</label>
+  <label class="flex items-center gap-1"><input type="checkbox" name="overdue" value="1" {% if filters.overdue %}checked{% endif %}> <span class="text-red-700">업로드 예정일 경과만</span></label>
   <button class="border rounded px-3 py-1 bg-white hover:bg-slate-100">적용</button>
-  <span class="text-slate-500">{{ rows|length }}건 · 내보내기는 현재 필터 기준</span>
+  <span class="text-slate-500">{{ rows|length }}건 · 내보내기는 현재 필터 기준 · <span class="inline-block w-3 h-3 align-middle bg-red-100 border border-red-300"></span> 업로드 예정일 경과 (사내용 엑셀에도 표시)</span>
 </form>
 
 <div class="overflow-x-auto bg-white border border-slate-200 rounded-lg">

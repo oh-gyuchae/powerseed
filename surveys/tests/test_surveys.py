@@ -166,6 +166,15 @@ class SyncTests(SurveyBase):
         self.assertEqual(self.inf.instagram_handle, "cafe_lover")  # 응답의 계정 답변으로 덮어쓰지 않음
         self.assertEqual(FormResponse.objects.get().match_method, FormResponse.MatchMethod.CODE)
 
+    def test_shipping_campaign_response_moves_to_replied(self):
+        from campaigns.models import CampaignKind
+
+        self.campaign.kind = CampaignKind.SHIPPING
+        self.campaign.save()
+        self.sync([response("r1", {Q_CODE: [str(self.p.survey_token)]})])
+        self.p.refresh_from_db()
+        self.assertEqual(self.p.stage, Stage.REPLIED)
+
     def test_match_by_handle_and_unmatched(self):
         self.sync([
             response("r1", {Q_HANDLE: ["https://instagram.com/By_Handle"]}),

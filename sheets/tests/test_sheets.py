@@ -11,7 +11,7 @@ from openpyxl import load_workbook
 from campaigns import services
 from campaigns.models import Campaign, Client, Stage, StatusLog
 from influencers.models import Influencer
-from sheets.columns import COLUMNS, SCOPE_CLIENT, columns_for
+from sheets.columns import COLUMNS, client_only
 
 
 class SheetBase(TestCase):
@@ -37,7 +37,7 @@ class ColumnTests(TestCase):
     def test_keys_unique_and_client_scope_drops_internal(self):
         keys = [c.key for c in COLUMNS]
         self.assertEqual(len(keys), len(set(keys)))
-        client_keys = {c.key for c in columns_for(SCOPE_CLIENT)}
+        client_keys = {c.key for c in client_only(COLUMNS)}
         self.assertNotIn("notes", client_keys)
         self.assertNotIn("assignee", client_keys)
         self.assertIn("fee_amount", client_keys)

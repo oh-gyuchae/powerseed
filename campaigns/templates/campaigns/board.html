@@ -3,7 +3,7 @@
 {% block content %}
 <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
   <div>
-    <div class="text-sm text-slate-500">{{ campaign.client }} · {{ campaign.get_status_display }}
+    <div class="text-sm text-slate-500">{{ campaign.client }} · {{ campaign.get_kind_display }} · {{ campaign.get_status_display }}
       {% if campaign.start_date %}· {{ campaign.start_date|date:"Y-m-d" }} ~ {{ campaign.end_date|date:"Y-m-d" }}{% endif %}</div>
     <h1 class="text-2xl font-bold">{{ campaign.name }}</h1>
     {% if campaign.visit_location %}<div class="text-sm text-slate-600">방문 장소: {{ campaign.visit_location }}</div>{% endif %}

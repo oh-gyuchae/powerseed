@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize %}
 {% block title %}{{ p.influencer }}{% endblock %}
 {% block content %}
 <a href="{% url 'campaigns:board' p.campaign.pk %}" class="text-sm text-slate-500 hover:text-slate-800">← {{ p.campaign.name }}</a>
@@ -11,13 +12,25 @@
           <h1 class="text-xl font-bold break-all">{{ p.influencer }}
             <span class="ml-2 text-xs align-middle px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">{{ p.get_stage_display }}</span>
           </h1>
-          <div class="text-sm text-slate-500">{{ p.influencer.account_name|default:"(계정 이름 미입력)" }} · {{ p.influencer.get_platform_display }}</div>
+          <div class="text-sm text-slate-500">
+            {% if p.influencer.code %}<span class="font-mono text-slate-700">{{ p.influencer.code }}</span> · {% endif %}
+            {{ p.influencer.account_name|default:"(계정 이름 미입력)" }} · {{ p.influencer.get_platform_display }}
+            {% if p.influencer.country %} · {{ p.influencer.get_country_display }}{% endif %}
+            · {{ p.campaign.get_kind_display }}
+            {% if p.influencer.is_blacklisted %}<span class="ml-1 text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">블랙리스트</span>{% endif %}
+          </div>
         </div>
         <a href="{% url 'admin:influencers_influencer_change' p.influencer.pk %}" class="text-sm text-slate-500 hover:text-slate-800">계정 정보 수정</a>
       </div>
       <dl class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
         <div><dt class="text-slate-500 text-xs">팔로워 수</dt><dd>{{ p.influencer.follower_count|default_if_none:"-" }}</dd></div>
         <div><dt class="text-slate-500 text-xs">한 달 릴스 평균</dt><dd>{{ p.influencer.monthly_reels_avg|default_if_none:"-" }}</dd></div>
+        {% if p.campaign.is_shipping %}
+        <div><dt class="text-slate-500 text-xs">참여율</dt><dd>{% if p.influencer.engagement_rate is not None %}{{ p.influencer.engagement_rate }}%{% else %}-{% endif %}</dd></div>
+        <div><dt class="text-slate-500 text-xs">카테고리</dt><dd>{{ p.influencer.get_category_display|default:"-" }}</dd></div>
+        <div><dt class="text-slate-500 text-xs">시간대</dt><dd>{{ p.influencer.timezone|default:"-" }}</dd></div>
+        <div><dt class="text-slate-500 text-xs">에이전시</dt><dd>{{ p.influencer.agency|default:"소속 없음" }}</dd></div>
+        {% endif %}
         <div class="col-span-2"><dt class="text-slate-500 text-xs">계정 URL</dt>
           <dd class="break-all">{% if p.influencer.account_url %}<a class="text-emerald-700 underline" href="{{ p.influencer.account_url }}" target="_blank" rel="noopener">{{ p.influencer.account_url }}</a>{% else %}-{% endif %}</dd></div>
       </dl>
@@ -28,7 +41,7 @@
       <form method="post" class="grid gap-3 sm:grid-cols-2">
         {% csrf_token %}
         {% for field in form %}
-        <label class="block text-sm {% if field.name in 'notes special_notes upload_url available_visit_dates' %}sm:col-span-2{% endif %}">
+        <label class="block text-sm {% if field.name in 'notes special_notes upload_url available_visit_dates customs_issue next_action ad_code' %}sm:col-span-2{% endif %}">
           <span class="text-slate-600">{{ field.label }}</span>
           <div class="mt-1 [&_input]:w-full [&_select]:w-full [&_textarea]:w-full [&_input]:border [&_select]:border [&_textarea]:border [&_input]:rounded [&_select]:rounded [&_textarea]:rounded [&_input]:px-2 [&_select]:px-2 [&_textarea]:px-2 [&_input]:py-1 [&_select]:py-1 [&_textarea]:py-1">{{ field }}</div>
           {% if field.help_text %}<span class="text-xs text-slate-400">{{ field.help_text }}</span>{% endif %}
@@ -39,6 +52,98 @@
           <button class="bg-emerald-600 text-white rounded px-4 py-2 text-sm hover:bg-emerald-700">저장</button>
         </div>
       </form>
+    </section>
+
+    <section id="posts" class="bg-white border border-slate-200 rounded-lg p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold">콘텐츠 성과</h2>
+        <a href="{% url 'performance:list' %}?campaign={{ p.campaign.pk }}" class="text-xs text-slate-500 hover:text-slate-800">캠페인 전체 보기 →</a>
+      </div>
+      {% if posts %}
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-xs">
+          <thead class="text-slate-500"><tr>
+            <th class="text-left py-1 pr-2">게시물</th><th class="text-right px-2">조회수</th><th class="text-right px-2">참여율</th>
+            <th class="text-right px-2">매출(원)</th><th class="text-right px-2">CPV</th><th class="text-right px-2">ROAS</th><th></th>
+          </tr></thead>
+          <tbody>
+            {% for post in posts %}
+            <tr class="border-t border-slate-100">
+              <td class="py-1 pr-2"><a href="{{ post.url }}" target="_blank" rel="noopener" class="text-emerald-700 underline">{{ post.get_format_display }}</a>
+                <span class="text-slate-400">{{ post.posted_at|date:"Y-m-d" }} · {% if post.checkpoint == 'd30' %}30일차{% else %}7일차{% endif %}</span></td>
+              <td class="text-right px-2">{{ post.views|default_if_none:"-"|intcomma }}</td>
+              <td class="text-right px-2">{% if post.engagement_rate is not None %}{{ post.engagement_rate }}%{% else %}-{% endif %}</td>
+              <td class="text-right px-2">{{ post.revenue|default_if_none:"-"|intcomma }}</td>
+              <td class="text-right px-2">{{ post.cpv|default_if_none:"-" }}</td>
+              <td class="text-right px-2">{% if post.roas is not None %}{{ post.roas }}%{% else %}-{% endif %}</td>
+              <td class="text-right"><a href="{% url 'admin:performance_contentpost_change' post.pk %}" class="text-slate-500 hover:text-slate-800">수정</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}<p class="text-xs text-slate-400">등록된 게시물이 없습니다.</p>{% endif %}
+      <details class="mt-3">
+        <summary class="cursor-pointer text-sm text-emerald-700">+ 게시물 추가</summary>
+        <form method="post" action="{% url 'performance:add' p.pk %}" class="mt-2 grid gap-2 grid-cols-2 sm:grid-cols-5 text-xs">
+          {% csrf_token %}
+          {% for field in post_form %}
+          <label class="block {% if field.name == 'url' or field.name == 'notes' %}col-span-2 sm:col-span-5{% endif %}">
+            <span class="text-slate-600">{{ field.label }}</span>
+            <div class="mt-0.5 [&_input]:w-full [&_select]:w-full [&_input]:border [&_select]:border [&_input]:rounded [&_select]:rounded [&_input]:px-1 [&_select]:px-1 [&_input]:py-0.5 [&_select]:py-0.5">{{ field }}</div>
+          </label>
+          {% endfor %}
+          <div class="col-span-2 sm:col-span-5"><button class="bg-emerald-600 text-white rounded px-3 py-1.5 hover:bg-emerald-700">추가</button></div>
+        </form>
+      </details>
+    </section>
+
+    <section id="payments" class="bg-white border border-slate-200 rounded-lg p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold">정산</h2>
+        <span class="text-sm">총비용 <b>{{ total_cost|default:0|intcomma }}원</b></span>
+      </div>
+      {% if missing_rates %}<div class="mb-2 rounded bg-amber-50 text-amber-800 px-2 py-1.5 text-xs">환율표에 없는 통화가 있어 총비용에서 빠졌습니다: {{ missing_rates|join:", " }} — <a class="underline" href="{% url 'admin:payments_exchangerate_add' %}">환율 추가</a></div>{% endif %}
+      <p class="text-xs text-slate-500 mb-2">총비용 = 지급 내역(수수료 포함, 원화) + 제품 원가 {{ p.product_cost|default_if_none:"-" }}원 + 해외 배송비 {{ p.shipping_cost|default_if_none:"-" }}원.
+        지급 내역이 없으면 확정 원고료로 계산한 예상 비용입니다. 제품 원가·배송비는 위 '진행 정보'에서 입력합니다.</p>
+      {% if payments %}
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-xs">
+          <thead class="text-slate-500"><tr>
+            <th class="text-left py-1 pr-2">구분</th><th class="text-right px-2">금액</th><th class="text-right px-2">환율</th><th class="text-right px-2">원화</th>
+            <th class="text-left px-2">지급 방법</th><th class="text-left px-2">서류</th><th class="text-left px-2">상태</th><th></th>
+          </tr></thead>
+          <tbody>
+            {% for pay in payments %}
+            <tr class="border-t border-slate-100">
+              <td class="py-1 pr-2">{{ pay.get_installment_display }}</td>
+              <td class="text-right px-2 whitespace-nowrap">{{ pay.amount }} {{ pay.currency }}</td>
+              <td class="text-right px-2">{{ pay.fx_rate|default_if_none:"없음" }}</td>
+              <td class="text-right px-2">{{ pay.cost_krw|default_if_none:"-"|intcomma }}</td>
+              <td class="px-2">{{ pay.get_method_display|default:"-" }}</td>
+              <td class="px-2 whitespace-nowrap">{{ pay.get_tax_document_display }}{% if pay.tax_document != 'none' %} {% if pay.tax_document_received %}✓{% else %}미수령{% endif %}{% endif %} · 인보이스 {% if pay.invoice_received %}✓{% else %}미수령{% endif %}</td>
+              <td class="px-2 whitespace-nowrap {% if not pay.is_paid %}text-amber-700{% endif %}">{% if pay.is_paid %}{{ pay.paid_at|date:"Y-m-d" }} 지급{% else %}지급 예정{% endif %}</td>
+              <td class="text-right"><a href="{% url 'admin:payments_payment_change' pay.pk %}" class="text-slate-500 hover:text-slate-800">수정</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+      <details class="mt-3">
+        <summary class="cursor-pointer text-sm text-emerald-700">+ 지급 내역 추가</summary>
+        <form method="post" action="{% url 'payments:add' p.pk %}" class="mt-2 grid gap-2 grid-cols-2 sm:grid-cols-4 text-xs">
+          {% csrf_token %}
+          {% for field in payment_form %}
+          <label class="block {% if field.name == 'notes' %}col-span-2 sm:col-span-4{% endif %}">
+            <span class="text-slate-600">{{ field.label }}</span>
+            <div class="mt-0.5 [&_input:not([type=checkbox])]:w-full [&_select]:w-full [&_input]:border [&_select]:border [&_input]:rounded [&_select]:rounded [&_input]:px-1 [&_select]:px-1 [&_input]:py-0.5 [&_select]:py-0.5">{{ field }}</div>
+            {% if field.help_text %}<span class="text-slate-400">{{ field.help_text }}</span>{% endif %}
+          </label>
+          {% endfor %}
+          <div class="col-span-2 sm:col-span-4"><button class="bg-emerald-600 text-white rounded px-3 py-1.5 hover:bg-emerald-700">추가</button></div>
+        </form>
+      </details>
     </section>
 
     {% if survey_answers %}
@@ -72,6 +177,18 @@
         <div>업로드: {{ p.uploaded_at|date:"Y-m-d H:i"|default:"-" }}</div>
       </dl>
     </section>
+
+    {% if past_campaigns %}
+    <section class="bg-white border border-slate-200 rounded-lg p-4">
+      <h2 class="font-semibold mb-3">지난 협업 이력</h2>
+      <ul class="space-y-1 text-xs">
+        {% for other in past_campaigns %}
+        <li><a href="{% url 'campaigns:participation' other.pk %}" class="hover:text-emerald-700">{{ other.campaign.name }}</a>
+          <span class="text-slate-400">· {{ other.get_stage_display }} · {{ other.created_at|date:"Y-m-d" }}</span></li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
 
     <section class="bg-white border border-slate-200 rounded-lg p-4">
       <h2 class="font-semibold mb-3">메시지 보내기</h2>

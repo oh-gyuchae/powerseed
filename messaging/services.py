@@ -13,7 +13,7 @@ from .models import Channel, InstagramThread, Message
 from .providers import ProviderError, get_provider
 from .providers.instagram import InstagramProvider
 
-# 설문 링크가 든 메시지를 보내면 '설문 발송'으로 옮길 단계
+# 설문 링크가 든 메시지를 보내면 '설문 발송'으로 옮길 단계 (방문형만 — 배송형에는 설문 발송 단계가 없다)
 _BEFORE_SURVEY_SENT = {Stage.CONTACT_TARGET, Stage.CONTACTED}
 
 
@@ -64,9 +64,16 @@ def send_message(participation, channel, *, subject="", body, user=None, provide
         raise
     message.status = Message.Status.SENT
     message.save()
+    participation.last_contacted_at = timezone.localdate()
+    participation.save(update_fields=["last_contacted_at", "updated_at"])
 
     link = survey_link(participation)
-    if link and link in body and participation.stage in _BEFORE_SURVEY_SENT:
+    if (
+        link
+        and link in body
+        and participation.stage in _BEFORE_SURVEY_SENT
+        and Stage.SURVEY_SENT in participation.campaign.stages
+    ):
         campaign_services.change_stage(
             participation, Stage.SURVEY_SENT, user=user, memo=f"{message.get_channel_display()}로 설문 링크 발송"
         )

@@ -12,4 +12,7 @@ urlpatterns = [
     path("", include("surveys.urls")),
     path("", include("messaging.urls")),
     path("", include("collector.urls")),
+    path("", include("influencers.urls")),
+    path("", include("performance.urls")),
+    path("", include("payments.urls")),
 ]

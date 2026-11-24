@@ -8,6 +8,10 @@ from django.views.decorators.http import require_POST
 from core.utils import parse_id
 from influencers.models import Influencer
 from messaging.views import compose_context, message_history
+from payments.forms import PaymentForm
+from payments.services import CostBook
+from performance.forms import ContentPostForm
+from performance.selectors import posts, with_metrics
 from surveys.models import FormQuestion
 
 from . import selectors, services
@@ -37,12 +41,12 @@ def _board_context(campaign, assignee_id=None):
     qs = campaign.participations.select_related("influencer", "assignee")
     if assignee_id:
         qs = qs.filter(assignee_id=assignee_id)
-    columns, closed = selectors.board_columns(qs)
+    columns, closed = selectors.board_columns(campaign, qs)
     return {
         "campaign": campaign,
         "columns": columns,
         "closed": closed,
-        "stage_choices": Stage.choices,
+        "stage_choices": campaign.stage_choices,
         "assignee_id": assignee_id,
     }
 
@@ -72,14 +76,21 @@ def campaign_add_influencers(request, pk):
         return redirect("campaigns:board", pk=pk)
 
     added = 0
+    blacklisted = []
     for handle in form.cleaned_data["handles"]:
         influencer, _ = Influencer.objects.get_or_create(
             instagram_handle=handle, defaults={"owner": request.user, "source": Influencer.Source.MANUAL}
         )
-        _, created = services.add_to_campaign(influencer, campaign, user=request.user)
+        try:
+            _, created = services.add_to_campaign(influencer, campaign, user=request.user)
+        except ValidationError:
+            blacklisted.append(f"@{handle}")
+            continue
         added += created
-    skipped = len(form.cleaned_data["handles"]) - added
+    skipped = len(form.cleaned_data["handles"]) - added - len(blacklisted)
     messages.success(request, f"{added}명 추가" + (f" (이미 등록된 {skipped}명 제외)" if skipped else ""))
+    if blacklisted:
+        messages.error(request, "블랙리스트라 추가하지 않음: " + ", ".join(blacklisted))
     return redirect("campaigns:board", pk=pk)
 
 
@@ -90,7 +101,7 @@ def participation_change_stage(request, pk):
     to_stage = request.POST.get("stage", "")
     error = None
     if to_stage not in Stage.values:
-        error = "알 수 없는 단계입니다."
+        error = "알 수 없는 단계입니다."  # 유형에 없는 단계는 change_stage()가 막는다
     else:
         try:
             services.change_stage(
@@ -120,6 +131,7 @@ def participation_detail(request, pk):
     participation = get_object_or_404(
         Participation.objects.select_related("campaign__client", "influencer", "assignee"), pk=pk
     )
+    book = CostBook()
     if request.method == "POST":
         form = ParticipationForm(request.POST, instance=participation)
         if form.is_valid():
@@ -135,9 +147,18 @@ def participation_detail(request, pk):
             "p": participation,
             "form": form,
             "logs": participation.status_logs.select_related("changed_by")[:50],
-            "stage_choices": Stage.choices,
+            "stage_choices": participation.campaign.stage_choices,
             "survey_answers": _survey_answers(participation),
             "history": message_history(participation),
+            "posts": with_metrics(posts(campaign_id=participation.campaign_id).filter(participation=participation), book),
+            "post_form": ContentPostForm(),
+            "payments": participation.payments.all(),
+            "payment_form": PaymentForm(initial={"currency": participation.fee_currency}),
+            "total_cost": book.participation_cost(participation),
+            "missing_rates": sorted(book.missing_rates),
+            "past_campaigns": participation.influencer.participations.exclude(pk=participation.pk)
+            .select_related("campaign")
+            .order_by("-created_at")[:10],
             **compose_context(participation),
         },
     )

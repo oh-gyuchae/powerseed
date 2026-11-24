@@ -3,6 +3,9 @@ from django.contrib import admin, messages
 from django.contrib.admin.helpers import ActionForm
 from django.core.exceptions import ValidationError
 
+from payments.admin import PaymentInline
+from performance.admin import ContentPostInline
+
 from . import services
 from .models import Campaign, Client, Participation, Stage, StatusLog
 
@@ -27,8 +30,8 @@ class ParticipationInline(admin.TabularInline):
 
 @admin.register(Campaign)
 class CampaignAdmin(admin.ModelAdmin):
-    list_display = ("name", "client", "status", "start_date", "end_date", "manager")
-    list_filter = ("status", "client", "manager")
+    list_display = ("name", "client", "kind", "status", "start_date", "end_date", "manager")
+    list_filter = ("kind", "status", "client", "manager")
     search_fields = ("name", "client__name")
     inlines = [ParticipationInline]
 
@@ -42,12 +45,15 @@ class CampaignAdmin(admin.ModelAdmin):
         for obj in instances:
             if obj.pk is None:
                 entered = {f: getattr(obj, f) for f in INLINE_ADD_FIELDS}
-                services.add_to_campaign(
-                    obj.influencer,
-                    form.instance,
-                    user=request.user,
-                    defaults={k: v for k, v in entered.items() if v is not None},
-                )
+                try:
+                    services.add_to_campaign(
+                        obj.influencer,
+                        form.instance,
+                        user=request.user,
+                        defaults={k: v for k, v in entered.items() if v is not None},
+                    )
+                except ValidationError as e:
+                    self.message_user(request, e.messages[0], messages.ERROR)
             else:
                 obj.save()
         formset.save_m2m()
@@ -74,6 +80,7 @@ class ParticipationAdmin(admin.ModelAdmin):
         "influencer",
         "campaign",
         "stage",
+        "next_action",
         "participation_status",
         "fee_amount",
         "payout_method",
@@ -81,8 +88,8 @@ class ParticipationAdmin(admin.ModelAdmin):
         "confirmed_visit_at",
         "assignee",
     )
-    list_filter = ("stage", "payout_status", "participation_status", "campaign", "assignee")
-    search_fields = ("influencer__instagram_handle", "influencer__account_name", "campaign__name")
+    list_filter = ("campaign__kind", "stage", "payout_status", "participation_status", "collab_type", "campaign", "assignee")
+    search_fields = ("influencer__instagram_handle", "influencer__account_name", "influencer__code", "campaign__name")
     autocomplete_fields = ("influencer",)
     readonly_fields = (
         "stage",
@@ -91,7 +98,7 @@ class ParticipationAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
-    inlines = [StatusLogInline]
+    inlines = [ContentPostInline, PaymentInline, StatusLogInline]
     action_form = ChangeStageForm
     actions = ["change_stage_action"]
 
@@ -114,6 +121,8 @@ class ParticipationAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         is_new = obj.pk is None
+        if is_new and obj.influencer.is_blacklisted:
+            self.message_user(request, f"{obj.influencer}은(는) 블랙리스트에 있습니다.", messages.WARNING)
         if is_new and obj.fee_amount is None:
             obj.fee_amount = obj.campaign.default_fee  # same default as services.add_to_campaign()
         super().save_model(request, obj, form, change)

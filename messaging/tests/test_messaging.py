@@ -203,3 +203,17 @@ class DetailPanelTests(MessagingBase):
         self.assertContains(res, "[12월 시딩] 설문")
         self.assertContains(res, "카페러버님 https://docs.google.com/forms/d/e/R/viewform?usp=pp_url")
         self.assertNotContains(res, "<html")
+
+
+@override_settings(**GMAIL)
+class ShippingCampaignMessagingTests(MessagingBase):
+    def test_send_updates_last_contact_but_no_survey_stage_for_shipping(self):
+        from campaigns.models import CampaignKind
+
+        self.campaign.kind = CampaignKind.SHIPPING
+        self.campaign.save()
+        body = services.render_template("Please fill in {{설문링크}}", self.p)
+        services.send_message(self.p, Channel.EMAIL, subject="hi", body=body, user=self.user)
+        self.p.refresh_from_db()
+        self.assertEqual(self.p.stage, Stage.CONTACT_TARGET)  # 배송형에는 '설문 발송' 단계가 없다
+        self.assertEqual(self.p.last_contacted_at, timezone.localdate())

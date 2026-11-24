@@ -11,15 +11,12 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from campaigns import services as campaign_services
-from campaigns.models import Participation, Stage
+from campaigns.models import REPLY_STAGE, Participation
 from influencers.models import Influencer, is_valid_handle, normalize_handle
 
 from . import parsing
 from .google_forms import GoogleFormsClient, GoogleFormsError
 from .models import UNIQUE_TARGETS, CampaignForm, FormQuestion, FormResponse, Target
-
-# 응답이 들어오면 '설문 응답'으로 옮길 단계 (이미 더 진행된 건은 그대로 둔다)
-_BEFORE_RESPONDED = {Stage.CONTACT_TARGET, Stage.CONTACTED, Stage.SURVEY_SENT}
 
 
 @dataclass
@@ -234,8 +231,11 @@ def apply_response(resp: FormResponse, *, user=None):
     p.survey_submitted_at = resp.submitted_at
     influencer.save()
     p.save()
-    if p.stage in _BEFORE_RESPONDED:
-        campaign_services.change_stage(p, Stage.RESPONDED, user=user, memo="구글 폼 응답")
+    # 응답이 들어오면 회신 단계로 옮긴다 (이미 더 진행됐거나 종료된 건은 그대로 둔다)
+    reply_stage = REPLY_STAGE[p.campaign.kind]  # 방문형 '설문 응답' / 배송형 '회신'
+    pipeline = p.campaign.pipeline
+    if p.stage in pipeline and pipeline.index(p.stage) < pipeline.index(reply_stage):
+        campaign_services.change_stage(p, reply_stage, user=user, memo="구글 폼 응답")
     resp.applied_at = timezone.now()
     resp.save(update_fields=["applied_at", "updated_at"])
 
@@ -261,7 +261,10 @@ def link_response(resp: FormResponse, participation=None, *, user=None):
         influencer, _ = Influencer.objects.get_or_create(
             instagram_handle=handle, defaults={"owner": user, "source": Influencer.Source.SURVEY}
         )
-        participation, _ = campaign_services.add_to_campaign(influencer, resp.form.campaign, user=user)
+        try:
+            participation, _ = campaign_services.add_to_campaign(influencer, resp.form.campaign, user=user)
+        except ValidationError as e:
+            raise ValueError(e.messages[0]) from e
     elif participation.campaign_id != resp.form.campaign_id:
         raise ValueError("다른 캠페인의 참여 건에는 연결할 수 없습니다.")
     resp.participation = participation

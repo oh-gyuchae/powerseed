@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}리포트{% endblock %}
+{% block content %}
+<div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+  <h1 class="text-2xl font-bold">리포트</h1>
+  <form method="get" class="flex items-center gap-2 text-sm">
+    <input type="hidden" name="top" value="{{ order }}">
+    <select name="kind" onchange="this.form.submit()" class="border rounded px-2 py-1 bg-white">
+      <option value="">캠페인 유형 전체</option>
+      {% for value, label in kinds %}<option value="{{ value }}" {% if kind == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </form>
+</div>
+{% if missing_rates %}<div class="mb-4 rounded bg-amber-50 text-amber-800 px-3 py-2 text-sm">환율표에 없는 통화가 있어 비용에서 빠졌습니다: {{ missing_rates|join:", " }} — <a class="underline" href="{% url 'admin:payments_exchangerate_add' %}">환율 추가</a></div>{% endif %}
+
+<section class="mb-8">
+  <h2 class="text-lg font-semibold mb-1">국가별 섭외 → 회신 → 계약</h2>
+  <p class="text-xs text-slate-500 mb-2">섭외 = 컨택 대상에서 한 단계라도 진행한 건 · 회신 = 회신(방문형은 설문 응답) 이상 또는 거절 · 계약 = 계약(방문형은 참여 확정) 이상.
+    회신율 = 회신 ÷ 섭외, 계약 전환율 = 계약 ÷ 회신. 국가는 인플루언서 DB 기준입니다.</p>
+  <div class="overflow-x-auto bg-white border border-slate-200 rounded-lg">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-100 text-slate-600 text-xs"><tr>
+        <th class="text-left px-3 py-2">국가</th><th class="text-right px-3 py-2">섭외</th><th class="text-right px-3 py-2">회신</th>
+        <th class="text-right px-3 py-2">회신율</th><th class="text-right px-3 py-2">계약</th><th class="text-right px-3 py-2">계약 전환율</th>
+      </tr></thead>
+      <tbody>
+        {% for r in funnel %}
+        <tr class="border-t border-slate-100">
+          <td class="px-3 py-1.5">{{ r.country }}</td>
+          <td class="px-3 py-1.5 text-right">{{ r.contacted }}</td>
+          <td class="px-3 py-1.5 text-right">{{ r.replied }}</td>
+          <td class="px-3 py-1.5 text-right">{% if r.reply_rate is not None %}{{ r.reply_rate }}%{% else %}-{% endif %}</td>
+          <td class="px-3 py-1.5 text-right">{{ r.contracted }}</td>
+          <td class="px-3 py-1.5 text-right font-medium">{% if r.contract_rate is not None %}{{ r.contract_rate }}%{% else %}-{% endif %}</td>
+        </tr>
+        {% empty %}<tr><td colspan="6" class="px-3 py-4 text-center text-slate-400">섭외한 건이 없습니다.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="mb-8">
+  <h2 class="text-lg font-semibold mb-1">캠페인별 비용 · 성과</h2>
+  <p class="text-xs text-slate-500 mb-2">총비용(원) = 지급 내역 + 제품 원가 + 배송비 (지급 내역이 없는 확정 건은 원고료로 예상). 평균 CPV = 총비용 ÷ 총조회수, 평균 ROAS = 총매출 ÷ 총비용.</p>
+  <div class="overflow-x-auto bg-white border border-slate-200 rounded-lg">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-100 text-slate-600 text-xs"><tr>
+        <th class="text-left px-3 py-2">캠페인</th><th class="text-right px-3 py-2">확정·계약</th><th class="text-right px-3 py-2">게시물</th>
+        <th class="text-right px-3 py-2">총비용(원)</th><th class="text-right px-3 py-2">총조회수</th><th class="text-right px-3 py-2">매출(원)</th>
+        <th class="text-right px-3 py-2">평균 CPV</th><th class="text-right px-3 py-2">평균 CPM</th><th class="text-right px-3 py-2">평균 ROAS</th>
+      </tr></thead>
+      <tbody>
+        {% for r in campaigns %}
+        <tr class="border-t border-slate-100">
+          <td class="px-3 py-1.5"><a href="{% url 'campaigns:board' r.campaign.pk %}" class="text-emerald-700 hover:underline">{{ r.campaign.name }}</a>
+            <span class="text-xs text-slate-500">{{ r.campaign.get_kind_display }}</span></td>
+          <td class="px-3 py-1.5 text-right">{{ r.contracted }}</td>
+          <td class="px-3 py-1.5 text-right"><a href="{% url 'performance:list' %}?campaign={{ r.campaign.pk }}" class="hover:underline">{{ r.posts }}</a></td>
+          <td class="px-3 py-1.5 text-right">{{ r.cost_krw|default_if_none:"-"|intcomma }}</td>
+          <td class="px-3 py-1.5 text-right">{{ r.views|intcomma }}</td>
+          <td class="px-3 py-1.5 text-right">{{ r.revenue|default_if_none:"-"|intcomma }}</td>
+          <td class="px-3 py-1.5 text-right">{{ r.cpv|default_if_none:"-" }}</td>
+          <td class="px-3 py-1.5 text-right">{{ r.cpm|default_if_none:"-"|intcomma }}</td>
+          <td class="px-3 py-1.5 text-right font-medium">{% if r.roas is not None %}{{ r.roas }}%{% else %}-{% endif %}</td>
+        </tr>
+        {% empty %}<tr><td colspan="9" class="px-3 py-4 text-center text-slate-400">캠페인이 없습니다.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+    <h2 class="text-lg font-semibold">성과 좋은 인플루언서 TOP 10 <span class="text-sm font-normal text-slate-500">재협업 후보</span></h2>
+    <div class="text-sm space-x-1">
+      {% for value, label in orders %}
+      <a href="?top={{ value }}{% if kind %}&kind={{ kind }}{% endif %}" class="px-2 py-1 rounded {% if order == value %}bg-slate-800 text-white{% else %}bg-white border{% endif %}">{{ label }}</a>
+      {% endfor %}
+    </div>
+  </div>
+  <p class="text-xs text-slate-500 mb-2">게시물이 있는 인플루언서를 모든 캠페인에서 합산합니다. CPV 순위는 비용과 조회수가 모두 있는 경우만, ROAS 순위는 매출이 기록된 경우만 포함합니다.</p>
+  <div class="overflow-x-auto bg-white border border-slate-200 rounded-lg">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-100 text-slate-600 text-xs"><tr>
+        <th class="text-left px-3 py-2">#</th><th class="text-left px-3 py-2">인플루언서</th><th class="text-left px-3 py-2">국가</th>
+        <th class="text-right px-3 py-2">캠페인</th><th class="text-right px-3 py-2">게시물</th><th class="text-right px-3 py-2">총조회수</th>
+        <th class="text-right px-3 py-2">평균 참여율</th><th class="text-right px-3 py-2">총비용(원)</th><th class="text-right px-3 py-2">CPV</th><th class="text-right px-3 py-2">ROAS</th>
+      </tr></thead>
+      <tbody>
+        {% for r in top %}
+        <tr class="border-t border-slate-100">
+          <td class="px-3 py-1.5 text-slate-400">{{ forloop.counter }}</td>
+          <td class="px-3 py-1.5"><a href="{% url 'admin:influencers_influencer_change' r.influencer.pk %}" class="hover:text-emerald-700">{{ r.influencer }}</a>
+            {% if r.influencer.code %}<span class="text-xs font-mono text-slate-500">{{ r.influencer.code }}</span>{% endif %}</td>
+          <td class="px-3 py-1.5">{{ r.influencer.get_country_display|default:"-" }}</td>
+          <td class="px-3 py-1.5 text-right">{{ r.campaigns }}</td>
+          <td class="px-3 py-1.5 text-right">{{ r.posts }}</td>
+          <td class="px-3 py-1.5 text-right">{{ r.views|intcomma }}</td>
+          <td class="px-3 py-1.5 text-right">{% if r.engagement_rate is not None %}{{ r.engagement_rate }}%{% else %}-{% endif %}</td>
+          <td class="px-3 py-1.5 text-right">{{ r.cost_krw|default_if_none:"-"|intcomma }}</td>
+          <td class="px-3 py-1.5 text-right">{{ r.cpv|default_if_none:"-" }}</td>
+          <td class="px-3 py-1.5 text-right">{% if r.roas is not None %}{{ r.roas }}%{% else %}-{% endif %}</td>
+        </tr>
+        {% empty %}<tr><td colspan="10" class="px-3 py-4 text-center text-slate-400">순위를 매길 데이터가 없습니다.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

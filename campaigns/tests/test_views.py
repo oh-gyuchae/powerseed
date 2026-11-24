@@ -158,6 +158,7 @@ class AdminInlineAddTests(BaseCase):
         data = {
             "client": self.campaign.client_id,
             "name": self.campaign.name,
+            "kind": self.campaign.kind,
             "status": self.campaign.status,
             "default_fee": "80000",
             f"{prefix}-TOTAL_FORMS": "2",

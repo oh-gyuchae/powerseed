@@ -96,8 +96,8 @@ class CollectorServiceTests(TestCase):
     def test_approve_creates_influencer_and_participation_idempotently(self):
         job = start_job("성수카페", 10, self.user)
         selected = job.candidates.filter(handle="cafe.lover")
-        self.assertEqual(approve_candidates(selected, self.campaign, user=self.user), (1, 0))
-        self.assertEqual(approve_candidates(selected, self.campaign, user=self.user), (0, 1))
+        self.assertEqual(approve_candidates(selected, self.campaign, user=self.user), (1, 0, 0))
+        self.assertEqual(approve_candidates(selected, self.campaign, user=self.user), (0, 1, 0))
 
         influencer = Influencer.objects.get(instagram_handle="cafe.lover")
         self.assertEqual(influencer.source, Influencer.Source.COLLECTOR)

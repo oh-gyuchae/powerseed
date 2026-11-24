@@ -36,9 +36,11 @@
 ## 2. 아키텍처 (Django 앱 = 모듈)
 ```
 config/            settings(env 분리), urls
-core/              TimeStampedModel, 공용 choices, 대시보드
-influencers/       Influencer(계정 마스터)
-campaigns/         Client, Campaign, Participation(파이프라인 핵심), StatusLog
+core/              TimeStampedModel, 공용 choices(국가·통화), 대시보드
+influencers/       Influencer(계정 마스터 = 시트 ① 인플루언서 DB, 국가별 ID)  ✅
+campaigns/         Client, Campaign(kind: 방문형/배송형), Participation(파이프라인 핵심 = 시트 ②), StatusLog
+performance/       ContentPost(시트 ③ 콘텐츠 성과) + 계산 열·리포트(시트 ⑤) selectors  ✅
+payments/          Payment(시트 ④ 정산), ExchangeRate(환율표), CostBook(총비용 원화 계산)  ✅
 collector/         HashtagJob, Candidate + adapters/ (기존 수집기 래핑)  ← F1
 messaging/         providers/{base.py, instagram.py, gmail.py}, InstagramThread, Message, MessageTemplate, /hooks/<provider>/  ✅
 sheets/            캠페인 시트 화면 + 엑셀/CSV 내보내기, 열 정의 columns.py (모델 없음)  ✅
@@ -126,6 +128,7 @@ class MessagingProvider:
 ## 6. 한 달 릴스 평균 (F3)
 - `metrics/fetchers/` 어댑터 인터페이스 `fetch_recent_reels(handle) -> list[ReelData]`
 - 계산 함수 `compute_monthly_reels_avg(snapshots, window_days=30)` — 기준은 질문 답변에 따라 확정 (기본안: 최근 30일 내 릴스의 평균 조회수, 30일 내 0건이면 최근 N개 평균으로 fallback, 표본 수도 함께 저장)
+- **고정(pinned) 게시물은 제외**한다 (해외 시트 요구사항, 2026-11-24). 스냅샷에 `is_pinned`를 함께 저장.
 - 트리거: 컨택 대상 승격 시 + 주기적(일 1회) + 수동 "재계산" 버튼.
 
 ---
@@ -162,7 +165,7 @@ class MessagingProvider:
 - 참여 상세에서 채널 선택·템플릿·발송, 메시지 이력, 설문 링크 포함 시 stage `SURVEY_SENT`. 미연결 대화는 Admin에서 인플루언서 지정
 - ✅ 단위테스트(httpx MockTransport, locmem 메일) / ⏳ Meta 앱 검수 후 실제 계정으로 수신·발신 왕복, Gmail 실제 발송 확인
 
-**Phase 6 — 릴스 평균 자동 산출 (1~2일)**
+**Phase 6 — 릴스 평균 자동 산출 (1~2일)** ⏸️ 보류 (2026-11-24, 데이터 수집 방식 결정 후. 고정 게시물 제외 반영)
 - fetcher 어댑터(수집기 재사용 or 외부 API), ReelsSnapshot 저장, 계산·주기 task
 - ✅ 고정 fixture로 계산 로직 테스트 + 실계정 1~2개 수동 확인
 
@@ -170,6 +173,16 @@ class MessagingProvider:
 - Dockerfile, `render.yaml`, PostgreSQL, gunicorn, cron(`sync_google_forms`), HTTPS, Meta 웹훅 URL 등록
 - task worker는 수집기 연결 시 도입 (수집기 보류, 2026-11-24)
 - ✅ 운영 URL에서 E2E 시나리오 1회 (수집→컨택→설문→시트→확정→업로드→지급→고객사용 엑셀 다운로드)
+
+**Phase 8 — 캠페인 유형 분리 + 해외 관리 탭 (2026-11-24)** ✅ 코드 완료
+- `Campaign.kind` 방문형/배송형. 유형별 단계 목록 `PIPELINES` / `EXIT_STAGES`, `change_stage()`가 유형에 없는 단계를 막음. 배송형: 컨택 대상 → 컨택 완료 → 회신 → 협상 → 계약 → 제품 발송 → 수령 → 초안 검수 → 업로드 → 지급 완료 / 거절 · 무응답 · 이탈
+- ① 인플루언서 DB: 국가별 ID(US-001), 국가·시간대·언어·참여율·카테고리·오디언스(국가/성별/연령)·연락처·에이전시·희망 단가(통화)·블랙리스트(새로 추가 차단), `/influencers/`
+- ② 배송형 진행 정보: 협업 유형·결과물·배송(배송사/송장/발송일/통관/수령일)·초안 제출일·수정 횟수·업로드 예정일·2차 활용(종료일/광고 집행/Spark Ads 코드)·광고 표기 확인·마지막 연락일(발송 시 자동)·다음 할 일, 시트 열은 `kinds`로 유형별
+- ③ 콘텐츠 성과 `ContentPost`: 7일/30일 조회·좋아요·댓글·저장·공유, 할인코드·UTM 클릭·매출, 계산 열 참여율·CPV·CPM·ROAS, `/content/`
+- ④ 정산 `Payment`: 구분(선금/잔금/전액)·금액·통화·적용 환율·원화 환산액·지급 방법·수수료·세금 서류·인보이스·지급일 + 참여 건 제품 원가·배송비, 환율표 `ExchangeRate`, `/payments/`
+- ⑤ 리포트 `/reports/`: 국가별 섭외 → 회신율 → 계약 전환율, 캠페인별 총비용·총조회수·평균 CPV·ROAS, 성과 TOP 10
+- 업로드 예정일 경과 행 빨간 표시(시트 화면·사내용 엑셀), 대시보드 업로드 기한 경과 알림도 같은 기준
+- ✅ 단위 테스트(유형별 단계·동기화·되돌리기, 블랙리스트, 비용·환율, 계산 열, 퍼널, 화면·내보내기)
 
 **후순위(MVP 이후)**: Gmail 답장 수신(Gmail API), 카카오/LINE provider, 인스타 7일 Human Agent 태그, 지급 일괄 처리·정산 리포트, 업로드 게시물 성과 추적, 권한 세분화, 고객사 열람용 읽기 전용 링크(파일 전달 대신).
 
@@ -185,7 +198,9 @@ class MessagingProvider:
 - 설문 = **구글 폼 연동** — 캠페인마다 구글 폼에서 질문 추가·수정, 플랫폼은 응답을 가져와 옮겨 적기가 주기능 (2026-11-23)
 - 메시징 = **인스타 DM은 Meta API 직접 연동**, **Gmail은 발송만**(SMTP 앱 비밀번호). 채널톡 미사용 (2026-11-23)
 - 재오픈 정책 = 지급 완료 이전 단계로 되돌리면 지급일 삭제 / 지급 대기 이전으로 되돌리면 지급 상태 미지급 / 업로드 완료 이전 단계로 되돌리면 업로드 일시 삭제 / 거절에서 재오픈하면 참여 의사 미응답
-- 고객사 전달 파일 제외 열 = 희망 원고료 · 이메일 · 설문 제출일 · 담당자 · 비고
+- 고객사 전달 파일 제외 열 = 희망 원고료 · 이메일 · 설문 제출일 · 담당자 · 비고 (배송형은 + 마지막 연락일 · 다음 할 일, 콘텐츠 성과는 비용·CPV·CPM·ROAS·메모)
+- 캠페인 유형 = **방문형 / 배송형 분리**. 해외 시트 5개 탭은 별도 시트가 아니라 플랫폼 화면(인플루언서 DB · 캠페인 시트 · 콘텐츠 성과 · 정산 · 리포트)으로 구현, 인플루언서 ID로 연결 (2026-11-24)
+- 총비용(원) = 지급 내역(수수료 포함) + 제품 원가 + 배송비, 지급 내역이 없으면 계약 건만 원고료로 예상. 게시물 비용 = 참여 건 총비용 ÷ 게시물 수. ROAS는 % (2026-11-24)
 
 ## 10. 단계별로 필요한 자료 (해당 Phase 시작 전까지)
 1. Phase 4: 수집기 코드를 레포 `collector/vendor/`(또는 경로 안내)로 제공 + 출력 필드

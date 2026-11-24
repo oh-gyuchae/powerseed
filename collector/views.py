@@ -85,8 +85,10 @@ def job_bulk(request, pk):
         if campaign is None:
             messages.error(request, "추가할 캠페인을 선택하세요.")
             return redirect(back)
-        added, existing = services.approve_candidates(selected, campaign, user=request.user)
-        suffix = f" (이미 등록된 {existing}명 제외)" if existing else ""
+        added, existing, blacklisted = services.approve_candidates(selected, campaign, user=request.user)
+        excluded = [f"이미 등록된 {existing}명" if existing else "", f"블랙리스트 {blacklisted}명" if blacklisted else ""]
+        excluded = ", ".join(x for x in excluded if x)
+        suffix = f" ({excluded} 제외)" if excluded else ""
         messages.success(request, f"'{campaign.name}'에 {added}명 추가{suffix}")
     else:
         messages.error(request, "알 수 없는 작업입니다.")

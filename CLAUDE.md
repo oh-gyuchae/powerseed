@@ -8,13 +8,16 @@
 - 데모 데이터: `python manage.py seed_demo` (admin/admin)
 
 ## 규칙
-- 파이프라인 단계 변경은 반드시 `campaigns/services.py`의 `change_stage()`를 통한다 (StatusLog 기록, 연관 필드 동기화). `participation.stage = ...` 직접 대입 금지. 되돌리기 시 초기화 정책(지급일/업로드 일시/참여 의사)도 여기서 처리한다.
-- 인플루언서 추가는 `services.add_to_campaign()` 사용 (멱등). 핸들은 `influencers.models.normalize_handle()`로 정규화.
+- 캠페인은 유형(`Campaign.kind`) 방문형/배송형. 단계 목록은 `campaigns/models.py`의 `PIPELINES`·`EXIT_STAGES`(유형별) 한 곳에서 관리하고, 화면의 단계 선택지는 `campaign.stage_choices`를 쓴다(`Stage.choices` 전체를 보여 주지 않음). 같은 의미의 단계는 유형이 달라도 같은 값(업로드 완료·지급 완료 등).
+- 파이프라인 단계 변경은 반드시 `campaigns/services.py`의 `change_stage()`를 통한다 (StatusLog 기록, 연관 필드 동기화, 캠페인 유형에 없는 단계 거부). `participation.stage = ...` 직접 대입 금지. 되돌리기 시 초기화 정책(지급일/지급 상태/업로드 일시/수령일/발송일/참여 의사)도 여기서 처리한다. 자동 단계 이동(설문 응답·설문 발송)은 대상 단계가 그 유형에 있을 때만.
+- 인플루언서 추가는 `services.add_to_campaign()` 사용 (멱등, 블랙리스트면 ValidationError — 호출하는 쪽에서 처리). 핸들은 `influencers.models.normalize_handle()`로 정규화. 국가별 ID(`code`)는 저장 시 자동 부여.
 - 대시보드/칸반용 조회 쿼리는 `campaigns/selectors.py`에 둔다.
 - UI: Django 템플릿 + Tailwind(CDN) + HTMX. 부분 갱신 템플릿은 `_` 접두사(`_board.html`). SPA 도입하지 않음.
 - 설정값/시크릿은 `.env` → `config/settings.py`의 `os.environ` 로 읽는다. 시크릿 파일은 `secrets/`(git 제외).
 - 모델 필드 verbose_name·화면 문구는 한국어.
-- 시트는 플랫폼 내 캠페인 시트가 원본(구글 시트 연동 없음). 고객사에는 엑셀/CSV 내보내기로 전달. 기본 열은 `sheets/columns.py`의 `COLUMNS` 한 곳에서 관리(화면·CSV·엑셀 공용), 고객사 파일에서 뺄 열은 `internal=True`. 구글 폼 "추가 답변" 열은 `survey_columns()`가 캠페인별로 붙인다.
+- 시트는 플랫폼 내 캠페인 시트가 원본(구글 시트 연동 없음). 고객사에는 엑셀/CSV 내보내기로 전달. 기본 열은 `sheets/columns.py`의 `COLUMNS` 한 곳에서 관리(화면·CSV·엑셀 공용), 고객사 파일에서 뺄 열은 `internal=True`, 유형 전용 열은 `kinds`. 시트 행 폼(`SheetRowForm`)은 열이 있는 필드만 남긴다(전송 안 된 필드를 빈 값으로 덮어쓰지 않도록). 구글 폼 "추가 답변" 열은 `survey_columns()`가 캠페인별로 붙인다.
+- 다른 탭의 열 정의: 인플루언서 DB `influencers/columns.py`, 콘텐츠 성과 `performance/columns.py`, 정산 `payments/columns.py` (같은 `Column`, 내보내기는 `sheets.exports.export_response`).
+- 비용·성과 계산: 참여 건 총비용(원)은 `payments.services.CostBook` 한 곳에서 계산(정산·콘텐츠 성과·리포트 공용). 원화 환산은 `payments.models.rate_for()`(환율표). 계산 열(참여율·CPV·CPM·ROAS)과 리포트 집계는 `performance/selectors.py`, 저장하지 않는다.
 - 설문은 구글 폼. 질문 편집은 구글 폼에서, 플랫폼은 `surveys/services.py`(`sync_form` → 매칭 → `apply_response`)로 가져와 옮겨 적는다. Google Forms API는 읽기 전용·서비스 계정. 답변 파싱/질문 제목 → 칸 추정은 `surveys/parsing.py`. 못 읽은 값은 기존 값을 덮어쓰지 않는다.
 - 메시징 채널은 `messaging/providers/`에 Provider 클래스 1개 추가 + `PROVIDERS` 등록으로 확장. 발송은 `messaging.services.send_message()`(이력 기록·실패도 기록). 현재: 인스타 DM(Meta API 직접), Gmail(SMTP 앱 비밀번호, `MAILERS["gmail"]`, 발송만).
 - 인스타 DM은 API로 먼저 보낼 수 없다(Meta 정책) → 첫 콜드 DM은 수동, 상대 마지막 메시지로부터 24시간 안에만 API 발송. 웹훅 `/hooks/instagram/`은 서명(X-Hub-Signature-256) 검증 필수.
