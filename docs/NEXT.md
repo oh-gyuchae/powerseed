@@ -42,6 +42,9 @@ python manage.py runserver
 
 ## 3. 다음 할 일 (순서대로)
 
+- [ ] **문서 브랜치 합치기:** `chore/review-and-docs`(SCREENS·BACKLOG·작업 방식) → `main`에 합치고 브랜치 삭제. 문서만 바뀜
+- [ ] **버그 수정 (`fix/payments-review` 브랜치 새로 만들어서):** 2026-11-24 코드 리뷰에서 나온 10건. 목록은 [BACKLOG.md](BACKLOG.md) "버그" 절. 정산 3건(환율 재계산·통화 변경·음수 입력) 먼저. 실제 정산 데이터 넣기 전에 끝낸다
+- [ ] **(선택) Phase 1~5 코드 리뷰:** 2026-11-24 리뷰는 Phase 8 변경분만 봤다
 - [ ] **Phase 8 확인·배포:** 로컬에서 `python manage.py migrate` → `seed_demo`로 배송형 데모 캠페인을 만들어 화면 확인 (인플루언서 DB · 배송형 칸반/시트 · 참여 상세의 게시물/지급 추가 · 콘텐츠 성과 · 정산 · 리포트). (커밋·푸시 완료 `be625c2`). 운영에는 Admin → 환율표에 쓰는 통화(USD·JPY·EUR 등) 환율을 먼저 넣습니다
 - [ ] **운영 동작 확인:** 고객사·캠페인 생성 → 인플루언서 추가 → 단계 변경 → 시트 수정 → 고객사용 엑셀 다운로드. 확인 후 테스트 데이터를 캠페인 → 인플루언서 → 고객사 순서로 삭제
 - [ ] **cron 확인:** Render `powerseed-sync-google-forms`에서 Trigger Run 후 성공 여부 확인
