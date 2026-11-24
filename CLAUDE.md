@@ -7,6 +7,10 @@
 - 마이그레이션 누락 확인: `python manage.py makemigrations --check --dry-run`
 - 데모 데이터: `python manage.py seed_demo` (admin/admin)
 
+## 작업 방식
+- `main` = 운영(푸시하면 Render 자동 배포). 기능·수정마다 `main`에서 브랜치(`feat/…`, `fix/…`, `chore/…`)를 새로 만들어 작업 → 테스트 통과·사용자 확인 후 `main`에 합치고 브랜치 삭제. `main`에 직접 커밋하지 않는다.
+- 화면 이름·위치는 `docs/SCREENS.md` 기준(화면을 추가·변경하면 갱신). 사용자 불편 목록·할 일 후보는 `docs/BACKLOG.md`(처리하면 '완료'로 옮김).
+
 ## 규칙
 - 캠페인은 유형(`Campaign.kind`) 방문형/배송형. 단계 목록은 `campaigns/models.py`의 `PIPELINES`·`EXIT_STAGES`(유형별) 한 곳에서 관리하고, 화면의 단계 선택지는 `campaign.stage_choices`를 쓴다(`Stage.choices` 전체를 보여 주지 않음). 같은 의미의 단계는 유형이 달라도 같은 값(업로드 완료·지급 완료 등).
 - 파이프라인 단계 변경은 반드시 `campaigns/services.py`의 `change_stage()`를 통한다 (StatusLog 기록, 연관 필드 동기화, 캠페인 유형에 없는 단계 거부). `participation.stage = ...` 직접 대입 금지. 되돌리기 시 초기화 정책(지급일/지급 상태/업로드 일시/수령일/발송일/참여 의사)도 여기서 처리한다. 자동 단계 이동(설문 응답·설문 발송)은 대상 단계가 그 유형에 있을 때만.
