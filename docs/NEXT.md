@@ -36,16 +36,16 @@ python manage.py runserver
 | Phase 0~3, 5 | 코드 완료. 구글 폼·Gmail·인스타 DM은 실제 계정 연결 전 |
 | Phase 4 수집기 | 구조만 완료. **실제 스크래퍼 연결 보류** |
 | Phase 6 릴스 평균 | **보류** (데이터 수집 방식 결정 후. 고정 게시물 제외 반영 예정) |
-| Phase 8 캠페인 유형·해외 탭 | 코드 완료 (로컬 테스트 통과). **아직 커밋·배포 전** |
+| Phase 8 캠페인 유형·해외 탭 | 커밋·푸시 완료 (`be625c2`). 운영 화면 확인·환율 입력 전 |
 | Phase 7 배포 | https://powerseed-web.onrender.com 가동, 관리자 로그인 확인 |
-| Render 배포 브랜치 | 아직 `feat/sheet-forms-messaging`. **`main`에 푸시해도 자동 배포되지 않음** |
+| Render 배포 브랜치 | `main` (2026-11-24 전환). `main` 푸시마다 자동 배포 |
 
 ## 3. 다음 할 일 (순서대로)
 
-- [ ] **Phase 8 확인·배포:** 로컬에서 `python manage.py migrate` → `seed_demo`로 배송형 데모 캠페인을 만들어 화면 확인 (인플루언서 DB · 배송형 칸반/시트 · 참여 상세의 게시물/지급 추가 · 콘텐츠 성과 · 정산 · 리포트). 이상 없으면 커밋·푸시. 운영에는 Admin → 환율표에 쓰는 통화(USD·JPY·EUR 등) 환율을 먼저 넣습니다
+- [ ] **Phase 8 확인·배포:** 로컬에서 `python manage.py migrate` → `seed_demo`로 배송형 데모 캠페인을 만들어 화면 확인 (인플루언서 DB · 배송형 칸반/시트 · 참여 상세의 게시물/지급 추가 · 콘텐츠 성과 · 정산 · 리포트). (커밋·푸시 완료 `be625c2`). 운영에는 Admin → 환율표에 쓰는 통화(USD·JPY·EUR 등) 환율을 먼저 넣습니다
 - [ ] **운영 동작 확인:** 고객사·캠페인 생성 → 인플루언서 추가 → 단계 변경 → 시트 수정 → 고객사용 엑셀 다운로드. 확인 후 테스트 데이터를 캠페인 → 인플루언서 → 고객사 순서로 삭제
 - [ ] **cron 확인:** Render `powerseed-sync-google-forms`에서 Trigger Run 후 성공 여부 확인
-- [ ] **Render 배포 브랜치를 `main`으로 전환:** Blueprint 설정의 브랜치를 `main`으로 바꾸고, `powerseed-web`과 cron의 Settings에서 Branch가 `main`인지 확인. 이후 `main` 푸시마다 자동 배포됨
+- [x] **Render 배포 브랜치를 `main`으로 전환 (2026-11-24 완료):** Blueprint 설정의 브랜치를 `main`으로 바꾸고, `powerseed-web`과 cron의 Settings에서 Branch가 `main`인지 확인. 이후 `main` 푸시마다 자동 배포됨
 - [ ] **Gmail 연결:** 앱 비밀번호 발급 → Render `powerseed-web` Environment에 `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD` 입력 → 실제 발송 1건 확인
 - [ ] **구글 폼 연결:** 서비스 계정 JSON을 `powerseed-shared` Secret Files에 `google-service-account.json`으로 추가 → 테스트 폼 공유·연결 → 응답 반영과 미리 채우기 링크 확인
 - [ ] **인스타 DM 연결:** Meta 앱 생성·검수 신청 → 토큰 입력 → 웹훅 `https://powerseed-web.onrender.com/hooks/instagram/` 등록 (구독 필드 `messages`, `message_echoes`) → 수신·발신 왕복 확인

@@ -4,7 +4,7 @@
 
 ## 처음 배포
 1. 이 코드를 GitHub `main` 브랜치에 올립니다.
-2. Render → **New → Blueprint** → 이 저장소와 `main` 브랜치를 선택합니다. 현재 운영 서비스는 아직 `feat/sheet-forms-messaging`을 배포 중이며, 전환 절차는 [NEXT.md](NEXT.md)에 있습니다.
+2. Render → **New → Blueprint** → 이 저장소와 `main` 브랜치를 선택합니다. 운영 서비스는 `main`을 배포합니다(푸시마다 자동 배포).
 3. 입력 칸이 뜨면 Gmail·Meta 값을 넣습니다. 아직 없으면 비워 두고 나중에 웹 서비스 Environment에서 넣어도 됩니다.
 4. 구글 폼을 쓰려면 Environment Group `powerseed-shared`의 **Secret Files**에 `google-service-account.json`을 추가합니다. 웹과 cron이 함께 씁니다.
 5. 배포가 끝나면 웹 서비스 **Shell**에서 관리자 계정을 만듭니다.
