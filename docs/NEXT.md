@@ -2,9 +2,7 @@
 
 마지막 갱신: 2026-11-28. 작업 기준 브랜치는 `main`입니다. 할 일을 끝내면 이 문서를 함께 갱신합니다.
 
-> **지금 작업 중인 브랜치: `feat/discovery-flow`** (원격에 푸시됨, `main`에는 아직 안 합침)
-> 인플루언서 발굴(파일 올리기·Apify·DB 자동 등록·카테고리 분류) + 캠페인 일괄 DM. 테스트 152개 통과.
-> 다른 PC에서 이어서: `.\start.ps1 -Branch feat/discovery-flow` → 아래 '다음 할 일' 맨 위부터.
+> 작업 방식: 기능·수정마다 `main`에서 새 브랜치(`feat/…`, `fix/…`)를 만들어 작업 → 테스트 통과·확인 후 `main`에 합치고 브랜치 삭제. 제품 방향(내부 검증 → SaaS)은 [ROADMAP.md](ROADMAP.md) 맨 위.
 
 ## 1. 작업 시작 명령 (Windows PowerShell)
 
@@ -39,7 +37,7 @@ python manage.py runserver
 | 항목 | 상태 |
 |---|---|
 | Phase 0~3, 5 | 코드 완료. 구글 폼·Gmail·인스타 DM은 실제 계정 연결 전 |
-| 인플루언서 발굴 | Apify 클라우드 수집(토큰 넣으면 동작) + insta-finder 결과 파일 올리기 + DB 자동 등록·카테고리 분류 (`feat/discovery-flow`, 2026-11-28). **Apify 실제 결과 확인 전** |
+| 인플루언서 발굴 | Apify 클라우드 수집(토큰 넣으면 동작) + insta-finder 결과 파일 올리기 + DB 자동 등록·카테고리 분류 (2026-11-28 `main` 반영). Apify는 토큰 넣기 전이라 꺼져 있음 |
 | 일괄 DM | 캠페인별 DM 문구 생성 → 복사·DM 열기·보냄 기록 (Meta 정책상 첫 DM은 수동) |
 | Phase 6 릴스 평균 | **보류** (데이터 수집 방식 결정 후. 고정 게시물 제외 반영 예정) |
 | Phase 8 캠페인 유형·해외 탭 | 커밋·푸시 완료 (`be625c2`). 운영 화면 확인 전 |
@@ -49,7 +47,7 @@ python manage.py runserver
 
 ## 3. 다음 할 일 (순서대로)
 
-- [ ] **발굴·일괄 DM 로컬 확인 (Apify 없이):** `.\start.ps1 -Branch feat/discovery-flow` → 인플루언서 발굴에서 insta-finder `result.xlsx` 올리기 → 인플루언서 DB에 자동 등록·카테고리 확인 → 후보 검토에서 캠페인에 추가 → 캠페인 → 일괄 DM(복사·DM 열기·보냄 기록) → 단계가 컨택 완료/설문 발송으로 바뀌는지. 괜찮으면 `main`에 합치기(합치면 배포되고 마이그레이션 2개 적용)
+- [ ] **발굴·일괄 DM 확인 (Apify 없이, 로컬 또는 운영):** 인플루언서 발굴에서 insta-finder `result.xlsx` 올리기 → 인플루언서 DB에 자동 등록·카테고리 확인 → 후보 검토에서 캠페인에 추가 → 캠페인 → 일괄 DM(복사·DM 열기·보냄 기록) → 단계가 컨택 완료/설문 발송으로 바뀌는지. 문제가 있으면 `fix/…` 브랜치에서 고친다
 - [ ] **(나중에, 선택) Apify 연결 확인:** 무료 플랜(월 $5 크레딧, 결과 1,000건당 약 $2)으로 충분. 토큰 넣기 전에는 '해시태그로 찾기' 버튼만 꺼져 있고 나머지는 그대로 동작. apify.com 가입 → API 토큰을 로컬 `.env`와 Render `powerseed-web`·cron Environment에 `APIFY_TOKEN`으로 입력 → 인플루언서 발굴에서 해시태그 1개 수집 → 계정명·팔로워·조회수가 제대로 나오는지 insta-finder 결과와 비교 (결과 키가 다르면 `collector/adapters/apify.py` 수정)
 - [ ] **cron 명령 확인:** render.yaml의 cron 명령이 `sync_google_forms; poll_collector_jobs`로 바뀜. Blueprint 동기화 후 Render cron Settings의 Command에 반영됐는지 확인
 - [ ] **버그 수정 (`fix/review-bugs` 브랜치):** 2026-11-24 코드 리뷰 남은 6건. 목록은 [BACKLOG.md](BACKLOG.md) "버그" 절 (정산 4건은 정산 탭 제거로 해당 없음)
