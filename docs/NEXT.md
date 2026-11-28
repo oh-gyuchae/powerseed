@@ -2,6 +2,10 @@
 
 마지막 갱신: 2026-11-28. 작업 기준 브랜치는 `main`입니다. 할 일을 끝내면 이 문서를 함께 갱신합니다.
 
+> **지금 작업 중인 브랜치: `feat/discovery-flow`** (원격에 푸시됨, `main`에는 아직 안 합침)
+> 인플루언서 발굴(파일 올리기·Apify·DB 자동 등록·카테고리 분류) + 캠페인 일괄 DM. 테스트 152개 통과.
+> 다른 PC에서 이어서: `.\start.ps1 -Branch feat/discovery-flow` → 아래 '다음 할 일' 맨 위부터.
+
 ## 1. 작업 시작 명령 (Windows PowerShell)
 
 ### 이 저장소가 이미 있는 PC
@@ -9,6 +13,7 @@
 cd C:\dev\powerseed
 .\start.ps1            # 최신 코드 받기 → 가상환경 → 패키지·DB → 서버 실행
 .\start.ps1 -NoServer  # 서버 없이 작업 준비만
+.\start.ps1 -Branch feat/discovery-flow  # main이 아닌 작업 브랜치로 받기
 ```
 커밋하지 않은 변경이 있으면 코드를 받지 않고 경고만 표시합니다.
 
@@ -44,7 +49,8 @@ python manage.py runserver
 
 ## 3. 다음 할 일 (순서대로)
 
-- [ ] **Apify 연결 확인:** apify.com 가입 → API 토큰을 로컬 `.env`와 Render `powerseed-web`·cron Environment에 `APIFY_TOKEN`으로 입력 → 인플루언서 발굴에서 해시태그 1개 수집 → 계정명·팔로워·조회수가 제대로 나오는지 insta-finder 결과와 비교 (결과 키가 다르면 `collector/adapters/apify.py` 수정)
+- [ ] **발굴·일괄 DM 로컬 확인 (Apify 없이):** `.\start.ps1 -Branch feat/discovery-flow` → 인플루언서 발굴에서 insta-finder `result.xlsx` 올리기 → 인플루언서 DB에 자동 등록·카테고리 확인 → 후보 검토에서 캠페인에 추가 → 캠페인 → 일괄 DM(복사·DM 열기·보냄 기록) → 단계가 컨택 완료/설문 발송으로 바뀌는지. 괜찮으면 `main`에 합치기(합치면 배포되고 마이그레이션 2개 적용)
+- [ ] **(나중에, 선택) Apify 연결 확인:** 무료 플랜(월 $5 크레딧, 결과 1,000건당 약 $2)으로 충분. 토큰 넣기 전에는 '해시태그로 찾기' 버튼만 꺼져 있고 나머지는 그대로 동작. apify.com 가입 → API 토큰을 로컬 `.env`와 Render `powerseed-web`·cron Environment에 `APIFY_TOKEN`으로 입력 → 인플루언서 발굴에서 해시태그 1개 수집 → 계정명·팔로워·조회수가 제대로 나오는지 insta-finder 결과와 비교 (결과 키가 다르면 `collector/adapters/apify.py` 수정)
 - [ ] **cron 명령 확인:** render.yaml의 cron 명령이 `sync_google_forms; poll_collector_jobs`로 바뀜. Blueprint 동기화 후 Render cron Settings의 Command에 반영됐는지 확인
 - [ ] **버그 수정 (`fix/review-bugs` 브랜치):** 2026-11-24 코드 리뷰 남은 6건. 목록은 [BACKLOG.md](BACKLOG.md) "버그" 절 (정산 4건은 정산 탭 제거로 해당 없음)
 - [ ] **(선택) Phase 1~5 코드 리뷰:** 2026-11-24 리뷰는 Phase 8 변경분만 봤다

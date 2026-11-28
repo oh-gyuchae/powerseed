@@ -1,12 +1,13 @@
 ﻿# PowerSeed 작업 시작: 최신 코드 받기 → 가상환경 → 패키지·DB 맞추기 → 서버 실행
 #   .\start.ps1            서버까지 실행
 #   .\start.ps1 -NoServer  작업 준비만 (가상환경이 켜진 채로 끝남)
+#   .\start.ps1 -Branch feat/discovery-flow   작업 중인 브랜치로 받기 (기본 main)
 [CmdletBinding()]
 param(
-    [switch]$NoServer
+    [switch]$NoServer,
+    [string]$Branch = 'main'
 )
 
-$Branch = 'main'
 Set-Location -LiteralPath $PSScriptRoot
 
 function Write-Step($Message) { Write-Host "`n==> $Message" -ForegroundColor Cyan }
