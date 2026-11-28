@@ -11,7 +11,7 @@
 cd C:\dev\powerseed
 .\start.ps1            # 최신 코드 받기 → 가상환경 → 패키지·DB → 서버 실행
 .\start.ps1 -NoServer  # 서버 없이 작업 준비만
-.\start.ps1 -Branch feat/discovery-flow  # main이 아닌 작업 브랜치로 받기
+.\start.ps1 -Branch feat/브랜치이름  # 다른 PC에서 하던 작업 브랜치로 받기 (기본 main)
 ```
 커밋하지 않은 변경이 있으면 코드를 받지 않고 경고만 표시합니다.
 
