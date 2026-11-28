@@ -40,7 +40,7 @@ core/              TimeStampedModel, 공용 choices(국가·통화), 대시보�
 influencers/       Influencer(계정 마스터 = 시트 ① 인플루언서 DB, 국가별 ID)  ✅
 campaigns/         Client, Campaign(kind: 방문형/배송형), Participation(파이프라인 핵심 = 시트 ②), StatusLog
 performance/       ContentPost(시트 ③ 콘텐츠 성과) + 계산 열·리포트(시트 ⑤) selectors  ✅
-payments/          Payment(시트 ④ 정산), ExchangeRate(환율표), CostBook(총비용 원화 계산)  ✅
+payments/          (2026-11-28 제거 — 정산 탭·지급 내역·환율표. 총비용 계산은 performance/costs.py)
 collector/         HashtagJob, Candidate + adapters/ (기존 수집기 래핑)  ← F1
 messaging/         providers/{base.py, instagram.py, gmail.py}, InstagramThread, Message, MessageTemplate, /hooks/<provider>/  ✅
 sheets/            캠페인 시트 화면 + 엑셀/CSV 내보내기, 열 정의 columns.py (모델 없음)  ✅
@@ -179,7 +179,7 @@ class MessagingProvider:
 - ① 인플루언서 DB: 국가별 ID(US-001), 국가·시간대·언어·참여율·카테고리·오디언스(국가/성별/연령)·연락처·에이전시·희망 단가(통화)·블랙리스트(새로 추가 차단), `/influencers/`
 - ② 배송형 진행 정보: 협업 유형·결과물·배송(배송사/송장/발송일/통관/수령일)·초안 제출일·수정 횟수·업로드 예정일·2차 활용(종료일/광고 집행/Spark Ads 코드)·광고 표기 확인·마지막 연락일(발송 시 자동)·다음 할 일, 시트 열은 `kinds`로 유형별
 - ③ 콘텐츠 성과 `ContentPost`: 7일/30일 조회·좋아요·댓글·저장·공유, 할인코드·UTM 클릭·매출, 계산 열 참여율·CPV·CPM·ROAS, `/content/`
-- ④ 정산 `Payment`: 구분(선금/잔금/전액)·금액·통화·적용 환율·원화 환산액·지급 방법·수수료·세금 서류·인보이스·지급일 + 참여 건 제품 원가·배송비, 환율표 `ExchangeRate`, `/payments/`
+- ~~④ 정산 `Payment`·환율표 `ExchangeRate`, `/payments/`~~ — 2026-11-28 제거(필요해지면 다시 설계). 총비용은 확정 원고료(원화) + 제품 원가 + 배송비
 - ⑤ 리포트 `/reports/`: 국가별 섭외 → 회신율 → 계약 전환율, 캠페인별 총비용·총조회수·평균 CPV·ROAS, 성과 TOP 10
 - 업로드 예정일 경과 행 빨간 표시(시트 화면·사내용 엑셀), 대시보드 업로드 기한 경과 알림도 같은 기준
 - ✅ 단위 테스트(유형별 단계·동기화·되돌리기, 블랙리스트, 비용·환율, 계산 열, 퍼널, 화면·내보내기)

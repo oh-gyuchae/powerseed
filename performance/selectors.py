@@ -1,6 +1,6 @@
 """콘텐츠 성과 계산 열 + 리포트(시트 ⑤ 대시보드) 집계.
 
-비용 배분: 참여 건 총비용(payments.services.CostBook)을 그 참여 건의 게시물 수로 나눠 게시물마다 배분한다.
+비용 배분: 참여 건 총비용(performance.costs.CostBook)을 그 참여 건의 게시물 수로 나눠 게시물마다 배분한다.
 - 참여율 = (좋아요+댓글+저장+공유) ÷ 조회수 × 100
 - CPV = 비용 ÷ 조회수, CPM = 비용 ÷ 조회수 × 1,000
 - ROAS(%) = 매출 ÷ 비용 × 100
@@ -14,8 +14,7 @@ from django.db.models import Count
 
 from campaigns.models import CONTRACT_STAGE, REPLY_STAGE, Campaign, Participation, Stage, StatusLog
 from core.choices import Country
-from payments.services import CostBook
-
+from .costs import CostBook
 from .models import ContentPost
 
 TOP_ORDERS = {
@@ -42,7 +41,7 @@ def _fill_rates(target, cost, views, revenue):
 def posts(campaign_id=None):
     qs = ContentPost.objects.select_related(
         "participation__campaign__client", "participation__influencer"
-    ).prefetch_related("participation__payments")
+    )
     if campaign_id:
         qs = qs.filter(participation__campaign_id=campaign_id)
     return qs.annotate(siblings=Count("participation__posts"))
@@ -114,7 +113,7 @@ def country_funnel(kind=None):
 
 
 def _participations_with_costs():
-    return Participation.objects.select_related("campaign", "influencer").prefetch_related("payments", "posts")
+    return Participation.objects.select_related("campaign", "influencer").prefetch_related("posts")
 
 
 def campaign_performance(kind=None):

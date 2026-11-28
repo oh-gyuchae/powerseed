@@ -14,10 +14,7 @@ from campaigns.models import EXIT_STAGES, PIPELINES, Campaign, CampaignKind, Cli
 from core.choices import Country, Currency
 from influencers.models import Category, Influencer
 from messaging.models import MessageTemplate
-from payments.models import ExchangeRate, Payment
 from performance.models import ContentPost
-
-DEMO_RATES = {Currency.USD: "1380", Currency.JPY: "9.2", Currency.EUR: "1490"}
 
 # (핸들, 국가, 카테고리, 도착 단계)
 OVERSEAS = [
@@ -122,13 +119,6 @@ class Command(BaseCommand):
 
     def _shipping_campaign(self, admin, client):
         today = timezone.localdate()
-        for currency, rate in DEMO_RATES.items():
-            ExchangeRate.objects.get_or_create(
-                currency=currency,
-                effective_date=today - timedelta(days=30),
-                defaults={"rate": Decimal(rate), "notes": "데모 환율"},
-            )
-
         campaign, created = Campaign.objects.get_or_create(
             client=client,
             name="데모 해외 스킨케어 시딩",
@@ -192,17 +182,5 @@ class Command(BaseCommand):
                     likes_d30=1400 * i if stage == Stage.PAID else None,
                     discount_code_uses=15 * i,
                     revenue=900000 * i,
-                )
-                Payment.objects.create(
-                    participation=p,
-                    installment=Payment.Installment.DEPOSIT if stage == Stage.UPLOADED else Payment.Installment.FULL,
-                    amount=Decimal(FEE_OF[currency]) / (2 if stage == Stage.UPLOADED else 1),
-                    currency=currency,
-                    method=Payment.Method.PAYPAL,
-                    fee=Decimal("12.50") if currency == Currency.USD else None,
-                    tax_document=Payment.TaxDocument.W8BEN if country == Country.US else Payment.TaxDocument.NONE,
-                    tax_document_received=country == Country.US,
-                    invoice_received=True,
-                    paid_at=today - timedelta(days=3),
                 )
         self.stdout.write(self.style.SUCCESS(f"배송형 데모 캠페인 생성 완료: /campaigns/{campaign.pk}/"))

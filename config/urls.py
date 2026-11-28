@@ -14,5 +14,4 @@ urlpatterns = [
     path("", include("collector.urls")),
     path("", include("influencers.urls")),
     path("", include("performance.urls")),
-    path("", include("payments.urls")),
 ]

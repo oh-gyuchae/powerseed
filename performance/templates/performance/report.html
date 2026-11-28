@@ -12,7 +12,7 @@
     </select>
   </form>
 </div>
-{% if missing_rates %}<div class="mb-4 rounded bg-amber-50 text-amber-800 px-3 py-2 text-sm">환율표에 없는 통화가 있어 비용에서 빠졌습니다: {{ missing_rates|join:", " }} — <a class="underline" href="{% url 'admin:payments_exchangerate_add' %}">환율 추가</a></div>{% endif %}
+{% if missing_rates %}<div class="mb-4 rounded bg-amber-50 text-amber-800 px-3 py-2 text-sm">원화가 아닌 원고료는 환율표가 없어 비용에서 빠졌습니다: {{ missing_rates|join:", " }}</div>{% endif %}
 
 <section class="mb-8">
   <h2 class="text-lg font-semibold mb-1">국가별 섭외 → 회신 → 계약</h2>
@@ -42,7 +42,7 @@
 
 <section class="mb-8">
   <h2 class="text-lg font-semibold mb-1">캠페인별 비용 · 성과</h2>
-  <p class="text-xs text-slate-500 mb-2">총비용(원) = 지급 내역 + 제품 원가 + 배송비 (지급 내역이 없는 확정 건은 원고료로 예상). 평균 CPV = 총비용 ÷ 총조회수, 평균 ROAS = 총매출 ÷ 총비용.</p>
+  <p class="text-xs text-slate-500 mb-2">총비용(원) = 확정 원고료(원화만) + 제품 원가 + 배송비. 평균 CPV = 총비용 ÷ 총조회수, 평균 ROAS = 총매출 ÷ 총비용.</p>
   <div class="overflow-x-auto bg-white border border-slate-200 rounded-lg">
     <table class="min-w-full text-sm">
       <thead class="bg-slate-100 text-slate-600 text-xs"><tr>

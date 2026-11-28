@@ -7,11 +7,11 @@ from django.views.decorators.http import require_POST
 
 from campaigns.models import Campaign, CampaignKind, Participation
 from core.utils import parse_id
-from payments.services import CostBook
 from sheets.columns import SCOPE_CLIENT, client_only, display_screen
 from sheets.exports import export_response
 
 from . import selectors
+from .costs import CostBook
 from .columns import POST_COLUMNS
 from .forms import ContentPostForm
 

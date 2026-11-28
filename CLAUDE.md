@@ -20,8 +20,8 @@
 - 설정값/시크릿은 `.env` → `config/settings.py`의 `os.environ` 로 읽는다. 시크릿 파일은 `secrets/`(git 제외).
 - 모델 필드 verbose_name·화면 문구는 한국어.
 - 시트는 플랫폼 내 캠페인 시트가 원본(구글 시트 연동 없음). 고객사에는 엑셀/CSV 내보내기로 전달. 기본 열은 `sheets/columns.py`의 `COLUMNS` 한 곳에서 관리(화면·CSV·엑셀 공용), 고객사 파일에서 뺄 열은 `internal=True`, 유형 전용 열은 `kinds`. 시트 행 폼(`SheetRowForm`)은 열이 있는 필드만 남긴다(전송 안 된 필드를 빈 값으로 덮어쓰지 않도록). 구글 폼 "추가 답변" 열은 `survey_columns()`가 캠페인별로 붙인다.
-- 다른 탭의 열 정의: 인플루언서 DB `influencers/columns.py`, 콘텐츠 성과 `performance/columns.py`, 정산 `payments/columns.py` (같은 `Column`, 내보내기는 `sheets.exports.export_response`).
-- 비용·성과 계산: 참여 건 총비용(원)은 `payments.services.CostBook` 한 곳에서 계산(정산·콘텐츠 성과·리포트 공용). 원화 환산은 `payments.models.rate_for()`(환율표). 계산 열(참여율·CPV·CPM·ROAS)과 리포트 집계는 `performance/selectors.py`, 저장하지 않는다.
+- 다른 탭의 열 정의: 인플루언서 DB `influencers/columns.py`, 콘텐츠 성과 `performance/columns.py` (같은 `Column`, 내보내기는 `sheets.exports.export_response`).
+- 비용·성과 계산: 참여 건 총비용(원)은 `performance.costs.CostBook` 한 곳에서 계산(참여 상세·콘텐츠 성과·리포트 공용) = 확정 원고료(원화만) + 제품 원가 + 배송비. 정산 탭(지급 내역·환율표)은 2026-11-28에 뺐다 — 외화 원고료는 비용에서 빠지고 경고로 표시. 계산 열(참여율·CPV·CPM·ROAS)과 리포트 집계는 `performance/selectors.py`, 저장하지 않는다.
 - 설문은 구글 폼. 질문 편집은 구글 폼에서, 플랫폼은 `surveys/services.py`(`sync_form` → 매칭 → `apply_response`)로 가져와 옮겨 적는다. Google Forms API는 읽기 전용·서비스 계정. 답변 파싱/질문 제목 → 칸 추정은 `surveys/parsing.py`. 못 읽은 값은 기존 값을 덮어쓰지 않는다.
 - 메시징 채널은 `messaging/providers/`에 Provider 클래스 1개 추가 + `PROVIDERS` 등록으로 확장. 발송은 `messaging.services.send_message()`(이력 기록·실패도 기록). 현재: 인스타 DM(Meta API 직접), Gmail(SMTP 앱 비밀번호, `MAILERS["gmail"]`, 발송만).
 - 인스타 DM은 API로 먼저 보낼 수 없다(Meta 정책) → 첫 콜드 DM은 수동, 상대 마지막 메시지로부터 24시간 안에만 API 발송. 웹훅 `/hooks/instagram/`은 서명(X-Hub-Signature-256) 검증 필수.

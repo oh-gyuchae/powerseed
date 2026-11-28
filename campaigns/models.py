@@ -272,7 +272,7 @@ class Participation(TimeStampedModel):
     last_contacted_at = models.DateField("마지막 연락일", null=True, blank=True, help_text="메시지를 보내면 자동 갱신")
     next_action = models.CharField("다음 할 일", max_length=200, blank=True)
 
-    # 비용 (정산 탭의 총비용에 포함, 원화)
+    # 비용 (콘텐츠 성과·리포트 총비용에 포함, 원화)
     product_cost = models.PositiveIntegerField("제품 원가(원)", null=True, blank=True)
     shipping_cost = models.PositiveIntegerField("해외 배송비(원)", null=True, blank=True)
 

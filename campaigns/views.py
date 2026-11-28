@@ -8,8 +8,7 @@ from django.views.decorators.http import require_POST
 from core.utils import parse_id
 from influencers.models import Influencer
 from messaging.views import compose_context, message_history
-from payments.forms import PaymentForm
-from payments.services import CostBook
+from performance.costs import CostBook
 from performance.forms import ContentPostForm
 from performance.selectors import posts, with_metrics
 from surveys.models import FormQuestion
@@ -152,8 +151,6 @@ def participation_detail(request, pk):
             "history": message_history(participation),
             "posts": with_metrics(posts(campaign_id=participation.campaign_id).filter(participation=participation), book),
             "post_form": ContentPostForm(),
-            "payments": participation.payments.all(),
-            "payment_form": PaymentForm(initial={"currency": participation.fee_currency}),
             "total_cost": book.participation_cost(participation),
             "missing_rates": sorted(book.missing_rates),
             "past_campaigns": participation.influencer.participations.exclude(pk=participation.pk)

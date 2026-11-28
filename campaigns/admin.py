@@ -3,7 +3,6 @@ from django.contrib import admin, messages
 from django.contrib.admin.helpers import ActionForm
 from django.core.exceptions import ValidationError
 
-from payments.admin import PaymentInline
 from performance.admin import ContentPostInline
 
 from . import services
@@ -98,7 +97,7 @@ class ParticipationAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
-    inlines = [ContentPostInline, PaymentInline, StatusLogInline]
+    inlines = [ContentPostInline, StatusLogInline]
     action_form = ChangeStageForm
     actions = ["change_stage_action"]
 

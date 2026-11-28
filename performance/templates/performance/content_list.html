@@ -29,7 +29,7 @@
   <button class="border rounded px-3 py-1 bg-white hover:bg-slate-100">적용</button>
   <span class="text-slate-500">{{ rows|length }}건</span>
 </form>
-{% if missing_rates %}<div class="mb-3 rounded bg-amber-50 text-amber-800 px-3 py-2 text-sm">환율표에 없는 통화가 있어 비용 계산에서 빠졌습니다: {{ missing_rates|join:", " }} — <a class="underline" href="{% url 'admin:payments_exchangerate_add' %}">환율 추가</a></div>{% endif %}
+{% if missing_rates %}<div class="mb-3 rounded bg-amber-50 text-amber-800 px-3 py-2 text-sm">원화가 아닌 원고료는 환율표가 없어 비용에서 빠졌습니다: {{ missing_rates|join:", " }}</div>{% endif %}
 
 {% include "sheets/_table.html" with admin_url="admin:performance_contentpost_change" empty_text="등록된 게시물이 없습니다." %}
 {% endblock %}

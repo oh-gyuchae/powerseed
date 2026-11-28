@@ -1,5 +1,3 @@
-from datetime import date
-from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -8,7 +6,6 @@ from django.urls import reverse
 from campaigns import services
 from campaigns.models import Campaign, CampaignKind, Client, Stage
 from influencers.models import Influencer
-from payments.models import ExchangeRate, Payment
 from performance import selectors
 from performance.models import ContentPost
 
@@ -34,7 +31,6 @@ class ReportBase(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user("ops", password="pw-12345")
         self.client.force_login(self.user)
-        ExchangeRate.objects.create(currency="USD", rate=Decimal("1000"), effective_date=date(2026, 1, 1))
         client = Client.objects.create(name="고객사A")
         self.campaign = Campaign.objects.create(client=client, name="해외", kind=CampaignKind.SHIPPING)
         self.us = Influencer.objects.create(instagram_handle="us_glow", country="US")
@@ -43,7 +39,7 @@ class ReportBase(TestCase):
 
         self.p, _ = services.add_to_campaign(self.us, self.campaign)
         walk(self.p, SHIP_TO_CONTRACT)
-        Payment.objects.create(participation=self.p, amount=Decimal("100"), currency="USD", paid_at=date(2026, 2, 1))
+        self.p.fee_amount, self.p.fee_currency = 100000, "KRW"
         self.p.product_cost = 20000
         self.p.save()  # 총비용 120,000원
         ContentPost.objects.create(participation=self.p, url="https://instagram.com/reel/a/", views_d7=10000, revenue=240000)
@@ -72,6 +68,17 @@ class MetricsTests(ReportBase):
         self.assertEqual((row.cpv, row.roas), (10.0, 200.0))
         self.assertEqual(missing, set())
 
+    def test_foreign_fee_is_left_out_and_reported(self):
+        self.p.fee_amount, self.p.fee_currency = 100, "USD"
+        self.p.save()
+        rows, missing = selectors.campaign_performance()
+        self.assertEqual((rows[0].cost_krw, missing), (20000, {"USD"}))
+
+    def test_uncommitted_fee_is_not_cost(self):
+        services.change_stage(self.p, Stage.NEGOTIATING)
+        rows, _ = selectors.campaign_performance()
+        self.assertEqual(rows[0].cost_krw, 20000)
+
     def test_country_funnel(self):
         funnel = {r["country"]: r for r in selectors.country_funnel()}
         self.assertNotIn("한국", funnel)
@@ -89,7 +96,8 @@ class MetricsTests(ReportBase):
         other = Campaign.objects.create(client=self.campaign.client, name="해외2", kind=CampaignKind.SHIPPING)
         p2, _ = services.add_to_campaign(self.jp, other)
         walk(p2, SHIP_TO_CONTRACT)
-        Payment.objects.create(participation=p2, amount=Decimal("10"), currency="USD", paid_at=date(2026, 2, 1))
+        p2.fee_amount, p2.fee_currency = 10000, "KRW"
+        p2.save()
         ContentPost.objects.create(participation=p2, url="https://instagram.com/reel/c/", views_d7=5000)
 
         by_cpv = selectors.top_influencers("cpv")

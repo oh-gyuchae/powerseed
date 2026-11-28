@@ -5,7 +5,6 @@ from django.test import TestCase, override_settings
 
 from campaigns.models import Campaign, CampaignKind, Participation
 from messaging.models import MessageTemplate
-from payments.models import Payment
 from performance.models import ContentPost
 
 
@@ -19,5 +18,4 @@ class SeedDemoTests(TestCase):
         self.assertEqual(Participation.objects.filter(campaign__kind=CampaignKind.VISIT).count(), 13)
         self.assertEqual(Participation.objects.filter(campaign__kind=CampaignKind.SHIPPING).count(), 9)
         self.assertEqual(ContentPost.objects.count(), 3)
-        self.assertFalse(Payment.objects.filter(amount_krw__isnull=True).exists())  # 데모 환율로 모두 환산
         self.assertIn("{{설문링크}}", MessageTemplate.objects.get(name="설문 안내").body)
