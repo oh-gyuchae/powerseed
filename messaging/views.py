@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from campaigns.models import Participation
+from campaigns.models import Campaign, Participation
 from core.utils import parse_id
 
 from . import services
@@ -68,19 +68,93 @@ def compose(request, pk):
 def send(request, pk):
     participation = get_object_or_404(Participation.objects.select_related("campaign", "influencer"), pk=pk)
     channel = request.POST.get("channel", "")
+    manual = request.POST.get("manual") == "1"
     try:
-        message = services.send_message(
-            participation,
-            channel,
-            subject=request.POST.get("subject", "")[:200],
-            body=request.POST.get("body", ""),
-            user=request.user,
-        )
+        if manual:
+            message = services.record_manual_message(
+                participation, channel, body=request.POST.get("body", ""), user=request.user
+            )
+        else:
+            message = services.send_message(
+                participation,
+                channel,
+                subject=request.POST.get("subject", "")[:200],
+                body=request.POST.get("body", ""),
+                user=request.user,
+            )
     except ProviderError as e:
         messages.error(request, str(e))
     else:
-        messages.success(request, f"{message.get_channel_display()} 발송 완료: {message.recipient}")
+        done = "직접 발송 기록" if manual else "발송 완료"
+        messages.success(request, f"{message.get_channel_display()} {done}: {message.recipient}")
     return redirect("campaigns:participation", pk=pk)
+
+
+# ---------------------------------------------------------------- 캠페인 일괄 DM
+
+
+OUTREACH_STAGES = ("contact_target", "contacted")
+
+
+def _outreach_row(participation, template, user=None, sent=None):
+    body = services.render_template(template.body, participation) if template else ""
+    provider = get_provider(Channel.INSTAGRAM)
+    return {
+        "p": participation,
+        "body": body,
+        "dm_url": f"https://ig.me/m/{participation.influencer.instagram_handle}",
+        "api_ready": provider.unavailable_reason(participation) is None,
+        "sent": sent,
+    }
+
+
+@login_required
+def outreach(request, campaign_pk):
+    """캠페인 일괄 DM: 템플릿을 고르면 인플루언서마다 문구(전용 설문 링크 포함)를 만들어 준다.
+
+    첫 DM은 API로 보낼 수 없어(Meta 정책) '복사 → 인스타 DM 열기 → 보냄 기록' 순서로 보낸다.
+    상대가 답장한 지 24시간 안이면 'API로 보내기'가 켜진다.
+    """
+    campaign = get_object_or_404(Campaign, pk=campaign_pk)
+    templates = MessageTemplate.objects.filter(Q(channel="") | Q(channel=Channel.INSTAGRAM))
+    template = templates.filter(pk=parse_id(request.GET.get("template"))).first() or templates.first()
+    stage = request.GET.get("stage") if request.GET.get("stage") in OUTREACH_STAGES else "contact_target"
+    participations = (
+        campaign.participations.filter(stage=stage).select_related("influencer", "campaign").order_by("influencer__instagram_handle")
+    )
+    return render(
+        request,
+        "messaging/outreach.html",
+        {
+            "campaign": campaign,
+            "templates": templates,
+            "template": template,
+            "stage": stage,
+            "stage_choices": [(value, label) for value, label in campaign.stage_choices if value in OUTREACH_STAGES],
+            "rows": [_outreach_row(p, template) for p in participations],
+        },
+    )
+
+
+@login_required
+@require_POST
+def outreach_send(request, pk):
+    """일괄 DM 한 줄: mode=manual(직접 보냄 기록) / api(API 발송). 그 줄만 다시 그린다."""
+    participation = get_object_or_404(Participation.objects.select_related("campaign", "influencer"), pk=pk)
+    body = request.POST.get("body", "")
+    try:
+        if request.POST.get("mode") == "api":
+            services.send_message(participation, Channel.INSTAGRAM, body=body, user=request.user)
+        else:
+            services.record_manual_message(participation, Channel.INSTAGRAM, body=body, user=request.user)
+    except ProviderError as e:
+        row = _outreach_row(participation, None)
+        row.update(body=body, error=str(e))
+        return render(request, "messaging/_outreach_row.html", {"row": row})
+    participation.refresh_from_db()
+    row = _outreach_row(participation, None, sent=True)
+    row["body"] = body
+    return render(request, "messaging/_outreach_row.html", {"row": row})
 
 
 @csrf_exempt

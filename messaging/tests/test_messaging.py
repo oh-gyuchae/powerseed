@@ -58,10 +58,10 @@ class GmailTests(MessagingBase):
         self.p.refresh_from_db()
         self.assertEqual(self.p.stage, Stage.SURVEY_SENT)
 
-    def test_plain_message_keeps_stage(self):
+    def test_plain_message_moves_contact_target_to_contacted(self):
         services.send_message(self.p, Channel.EMAIL, subject="안내", body="안녕하세요")
         self.p.refresh_from_db()
-        self.assertEqual(self.p.stage, Stage.CONTACT_TARGET)
+        self.assertEqual(self.p.stage, Stage.CONTACTED)
 
     def test_no_email_or_subject(self):
         with self.assertRaisesMessage(ProviderError, "메일 제목"):
@@ -215,5 +215,46 @@ class ShippingCampaignMessagingTests(MessagingBase):
         body = services.render_template("Please fill in {{설문링크}}", self.p)
         services.send_message(self.p, Channel.EMAIL, subject="hi", body=body, user=self.user)
         self.p.refresh_from_db()
-        self.assertEqual(self.p.stage, Stage.CONTACT_TARGET)  # 배송형에는 '설문 발송' 단계가 없다
+        self.assertEqual(self.p.stage, Stage.CONTACTED)  # 배송형에는 '설문 발송' 단계가 없어 '컨택 완료'로
         self.assertEqual(self.p.last_contacted_at, timezone.localdate())
+
+
+class ManualOutreachTests(MessagingBase):
+    """첫 DM은 인스타 앱에서 직접 보내고 플랫폼에는 기록만 (Meta 정책)."""
+
+    def setUp(self):
+        super().setUp()
+        self.tpl = MessageTemplate.objects.create(name="첫 DM", channel=Channel.INSTAGRAM, body="{{이름}}님 안녕하세요 {{설문링크}}")
+
+    def test_record_manual_message_moves_stage(self):
+        body = services.render_template(self.tpl.body, self.p)
+        msg = services.record_manual_message(self.p, Channel.INSTAGRAM, body=body, user=self.user)
+        self.assertEqual((msg.manual, msg.status, msg.recipient), (True, Message.Status.SENT, "@cafe_lover"))
+        self.p.refresh_from_db()
+        self.assertEqual(self.p.stage, Stage.SURVEY_SENT)
+        self.assertEqual(self.p.last_contacted_at, timezone.localdate())
+        self.assertIn("직접 발송", self.p.status_logs.first().memo)
+
+    def test_record_requires_body(self):
+        with self.assertRaises(ProviderError):
+            services.record_manual_message(self.p, Channel.INSTAGRAM, body="  ")
+
+    def test_outreach_screen_and_row_record(self):
+        res = self.client.get(reverse("messaging:outreach", args=[self.campaign.pk]))
+        self.assertContains(res, "@cafe_lover")
+        self.assertContains(res, "카페러버님 안녕하세요 https://docs.google.com/forms/")
+        self.assertContains(res, "https://ig.me/m/cafe_lover")
+        self.assertNotContains(res, "API로 보내기")
+        res = self.client.post(reverse("messaging:outreach_send", args=[self.p.pk]), {"mode": "manual", "body": "안녕하세요"})
+        self.assertContains(res, "기록했습니다")
+        self.p.refresh_from_db()
+        self.assertEqual(self.p.stage, Stage.CONTACTED)
+        res = self.client.get(reverse("messaging:outreach", args=[self.campaign.pk]))
+        self.assertNotContains(res, "@cafe_lover")  # 컨택 대상에서 빠짐
+
+    def test_compose_offers_manual_record_for_instagram(self):
+        res = self.client.get(reverse("messaging:compose", args=[self.p.pk]), {"channel": "instagram"})
+        self.assertContains(res, "보냄 기록")
+        res = self.client.post(reverse("messaging:send", args=[self.p.pk]), {"channel": "instagram", "manual": "1", "body": "hi"})
+        self.assertRedirects(res, reverse("campaigns:participation", args=[self.p.pk]))
+        self.assertTrue(Message.objects.get().manual)

@@ -1,45 +1,45 @@
 {% extends "base.html" %}
-{% block title %}해시태그 수집{% endblock %}
+{% block title %}인플루언서 발굴{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">해시태그 수집</h1>
+<h1 class="text-2xl font-bold mb-1">인플루언서 발굴</h1>
+<p class="text-sm text-slate-500 mb-4">해시태그로 계정을 찾으면 <b>인플루언서 DB에 자동 등록</b>되고(카테고리 자동 분류), 후보 검토에서 고른 계정만 캠페인의 컨택 대상이 됩니다.</p>
 
-{% if not configured %}
-<div class="mb-4 rounded bg-amber-50 text-amber-800 px-3 py-2 text-sm">
-  수집기가 아직 연결되지 않았습니다. 기존 스크래퍼를 넣고 <code>.env</code>의 <code>COLLECTOR_SCRAPER</code>를 설정하면 실행할 수 있습니다.
+<div class="grid gap-4 lg:grid-cols-2 mb-6">
+  <form method="post" class="bg-white border border-slate-200 rounded-lg p-3 space-y-2">
+    {% csrf_token %}
+    <h2 class="font-semibold">해시태그로 찾기</h2>
+    {% if not configured %}
+    <div class="rounded bg-amber-50 text-amber-800 px-2 py-1.5 text-xs">
+      수집기가 아직 연결되지 않았습니다. Render Environment(로컬은 <code>.env</code>)에 <code>APIFY_TOKEN</code>을 넣으면 실행할 수 있습니다. 그 전에는 오른쪽 '결과 파일 올리기'를 쓰세요.
+    </div>
+    {% endif %}
+    <div class="flex flex-wrap items-end gap-3 text-sm">
+      <label>해시태그
+        <input name="hashtag" value="{{ form.hashtag.value|default:'' }}" required placeholder="#성수카페" class="block border rounded px-2 py-1 mt-1">
+      </label>
+      <label>최대 계정 수
+        <input name="limit" type="number" min="1" value="{{ form.limit.value|default:'' }}" required class="block border rounded px-2 py-1 mt-1 w-24">
+      </label>
+      <label>{{ form.category.label }}<div class="mt-1 [&_select]:border [&_select]:rounded [&_select]:px-2 [&_select]:py-1 [&_select]:bg-white">{{ form.category }}</div></label>
+      <label>{{ form.campaign.label }}<div class="mt-1 [&_select]:border [&_select]:rounded [&_select]:px-2 [&_select]:py-1 [&_select]:bg-white">{{ form.campaign }}</div></label>
+      <button {% if not configured %}disabled{% endif %} class="bg-emerald-600 text-white rounded px-4 py-1.5 hover:bg-emerald-700 disabled:opacity-50">수집 시작</button>
+    </div>
+    {% for field in form %}{% for error in field.errors %}<div class="text-sm text-red-700">{{ error }}</div>{% endfor %}{% endfor %}
+  </form>
+
+  <form method="post" enctype="multipart/form-data" class="bg-white border border-slate-200 rounded-lg p-3 space-y-2">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="upload">
+    <h2 class="font-semibold">결과 파일 올리기 <span class="text-xs font-normal text-slate-500">insta-finder의 result.xlsx / CSV</span></h2>
+    <div class="flex flex-wrap items-end gap-3 text-sm">
+      <label>파일<input type="file" name="file" accept=".xlsx,.csv" required class="block mt-1 text-xs"></label>
+      <label>{{ upload_form.category.label }}<div class="mt-1 [&_select]:border [&_select]:rounded [&_select]:px-2 [&_select]:py-1 [&_select]:bg-white">{{ upload_form.category }}</div></label>
+      <label>{{ upload_form.campaign.label }}<div class="mt-1 [&_select]:border [&_select]:rounded [&_select]:px-2 [&_select]:py-1 [&_select]:bg-white">{{ upload_form.campaign }}</div></label>
+      <button class="bg-slate-800 text-white rounded px-4 py-1.5 hover:bg-slate-700">불러오기</button>
+    </div>
+    {% for field in upload_form %}{% for error in field.errors %}<div class="text-sm text-red-700">{{ error }}</div>{% endfor %}{% endfor %}
+  </form>
 </div>
-{% endif %}
 
-<form method="post" class="bg-white border border-slate-200 rounded-lg p-3 mb-6 flex flex-wrap items-end gap-3">
-  {% csrf_token %}
-  <label class="text-sm">해시태그
-    <input name="hashtag" value="{{ form.hashtag.value|default:'' }}" required placeholder="#성수카페" class="block border rounded px-2 py-1 mt-1">
-  </label>
-  <label class="text-sm">최대 수집 수
-    <input name="limit" type="number" min="1" value="{{ form.limit.value|default:'' }}" required class="block border rounded px-2 py-1 mt-1 w-28">
-  </label>
-  <button {% if not configured %}disabled{% endif %} class="bg-emerald-600 text-white rounded px-4 py-2 text-sm hover:bg-emerald-700 disabled:opacity-50">수집 시작</button>
-  {% for field in form %}{% for error in field.errors %}<div class="w-full text-sm text-red-700">{{ error }}</div>{% endfor %}{% endfor %}
-</form>
-
-<div class="bg-white border border-slate-200 rounded-lg overflow-x-auto">
-  <table class="w-full text-sm">
-    <thead class="bg-slate-100 text-left">
-      <tr><th class="px-3 py-2">해시태그</th><th class="px-3 py-2">상태</th><th class="px-3 py-2">후보</th><th class="px-3 py-2">검토 대기</th><th class="px-3 py-2">요청자</th><th class="px-3 py-2">요청 일시</th></tr>
-    </thead>
-    <tbody>
-      {% for job in jobs %}
-      <tr class="border-t">
-        <td class="px-3 py-2"><a href="{% url 'collector:review' job.pk %}" class="text-emerald-700 hover:underline">#{{ job.hashtag }}</a></td>
-        <td class="px-3 py-2">{{ job.get_status_display }}</td>
-        <td class="px-3 py-2">{{ job.result_count }}</td>
-        <td class="px-3 py-2">{{ job.pending_count }}</td>
-        <td class="px-3 py-2">{{ job.requested_by|default:"-" }}</td>
-        <td class="px-3 py-2">{{ job.created_at|date:"Y-m-d H:i" }}</td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="6" class="px-3 py-6 text-center text-slate-500">수집 작업이 없습니다.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+{% include "collector/_jobs_table.html" %}
 {% endblock %}

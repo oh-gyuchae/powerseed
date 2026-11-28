@@ -23,6 +23,7 @@
 - 다른 탭의 열 정의: 인플루언서 DB `influencers/columns.py`, 콘텐츠 성과 `performance/columns.py` (같은 `Column`, 내보내기는 `sheets.exports.export_response`).
 - 비용·성과 계산: 참여 건 총비용(원)은 `performance.costs.CostBook` 한 곳에서 계산(참여 상세·콘텐츠 성과·리포트 공용) = 확정 원고료(원화만) + 제품 원가 + 배송비. 정산 탭(지급 내역·환율표)은 2026-11-28에 뺐다 — 외화 원고료는 비용에서 빠지고 경고로 표시. 계산 열(참여율·CPV·CPM·ROAS)과 리포트 집계는 `performance/selectors.py`, 저장하지 않는다.
 - 설문은 구글 폼. 질문 편집은 구글 폼에서, 플랫폼은 `surveys/services.py`(`sync_form` → 매칭 → `apply_response`)로 가져와 옮겨 적는다. Google Forms API는 읽기 전용·서비스 계정. 답변 파싱/질문 제목 → 칸 추정은 `surveys/parsing.py`. 못 읽은 값은 기존 값을 덮어쓰지 않는다.
+- 발굴(수집): `collector/services.py`. 수집 방법 3가지(Apify `adapters/apify.py` 2단계 비동기 — `start_job` → `poll_job`, 연결된 스크래퍼, insta-finder 파일 `importers.py`)는 모두 `finish_job()`을 지나며, 수집된 계정은 **곧바로 인플루언서 DB에 등록**(빈 칸만 채움, 카테고리는 작업 지정값 또는 `classify.guess_category()`). 캠페인 추가는 후보 검토에서 고른 것만(`approve_candidates`). Apify 상태 확인은 화면 HTMX 폴링 + cron `poll_collector_jobs` — 웹 요청 안에서 수집 완료를 기다리지 않는다.
 - 메시징 채널은 `messaging/providers/`에 Provider 클래스 1개 추가 + `PROVIDERS` 등록으로 확장. 발송은 `messaging.services.send_message()`(이력 기록·실패도 기록). 현재: 인스타 DM(Meta API 직접), Gmail(SMTP 앱 비밀번호, `MAILERS["gmail"]`, 발송만).
-- 인스타 DM은 API로 먼저 보낼 수 없다(Meta 정책) → 첫 콜드 DM은 수동, 상대 마지막 메시지로부터 24시간 안에만 API 발송. 웹훅 `/hooks/instagram/`은 서명(X-Hub-Signature-256) 검증 필수.
+- 인스타 DM은 API로 먼저 보낼 수 없다(Meta 정책) → 첫 콜드 DM은 인스타 앱에서 직접 보내고 `services.record_manual_message()`로 기록(`Message.manual`), 상대 마지막 메시지로부터 24시간 안에만 API 발송. 보낸 뒤 처리(마지막 연락일, 컨택 대상 → 컨택 완료, 설문 링크면 설문 발송)는 `_after_outbound()` 한 곳. 웹훅 `/hooks/instagram/`은 서명(X-Hub-Signature-256) 검증 필수.
 - 외부 API 호출(Google Forms, Meta)은 `httpx`, 테스트에서는 fake client / `httpx.MockTransport`로 대체. 테스트에서 실제 네트워크 호출 금지.

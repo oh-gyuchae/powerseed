@@ -1,0 +1,27 @@
+{% with p=row.p %}
+<tr id="outreach-{{ p.pk }}" class="border-t align-top {% if row.sent %}bg-emerald-50{% endif %}">
+  <td class="px-3 py-2 whitespace-nowrap">
+    <a href="{% url 'campaigns:participation' p.pk %}" class="text-emerald-700 hover:underline">@{{ p.influencer.instagram_handle }}</a>
+    <div class="text-xs text-slate-500">{{ p.influencer.get_category_display|default:"" }}{% if p.influencer.follower_count %} · 팔로워 {{ p.influencer.follower_count }}{% endif %}</div>
+    <div class="text-xs text-slate-500">{{ p.get_stage_display }}</div>
+  </td>
+  <td class="px-3 py-2 w-full">
+    <form hx-post="{% url 'messaging:outreach_send' p.pk %}" hx-target="#outreach-{{ p.pk }}" hx-swap="outerHTML" class="space-y-1">
+      {% csrf_token %}
+      <textarea name="body" rows="3" class="w-full border rounded px-2 py-1 text-xs">{{ row.body }}</textarea>
+      {% if row.error %}<div class="text-xs text-red-700">{{ row.error }}</div>{% endif %}
+      {% if row.sent %}
+      <div class="text-xs text-emerald-800">기록했습니다 → 단계: {{ p.get_stage_display }}</div>
+      {% else %}
+      <div class="flex flex-wrap gap-1">
+        <button type="button" class="border rounded px-2 py-1 text-xs hover:bg-slate-100"
+                onclick="navigator.clipboard.writeText(this.form.body.value); this.textContent='복사됨'">① 내용 복사</button>
+        <a href="{{ row.dm_url }}" target="_blank" rel="noopener noreferrer" class="border rounded px-2 py-1 text-xs hover:bg-slate-100">② 인스타 DM 열기</a>
+        <button name="mode" value="manual" class="rounded px-2 py-1 text-xs text-white bg-slate-800 hover:bg-slate-700">③ 보냄 기록</button>
+        {% if row.api_ready %}<button name="mode" value="api" class="rounded px-2 py-1 text-xs text-white bg-emerald-600 hover:bg-emerald-700">API로 보내기 (24시간 안 답장)</button>{% endif %}
+      </div>
+      {% endif %}
+    </form>
+  </td>
+</tr>
+{% endwith %}

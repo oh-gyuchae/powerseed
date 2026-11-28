@@ -15,6 +15,7 @@
         {% for u in users %}<option value="{{ u.pk }}" {% if assignee_id == u.pk %}selected{% endif %}>{{ u.get_username }}</option>{% endfor %}
       </select>
     </form>
+    <a href="{% url 'messaging:outreach' campaign.pk %}" class="text-sm bg-white border rounded px-3 py-1 hover:bg-slate-100">일괄 DM</a>
     <a href="{% url 'sheets:sheet' campaign.pk %}" class="text-sm bg-white border rounded px-3 py-1 hover:bg-slate-100">시트 · 내보내기</a>
     <a href="{% url 'surveys:settings' campaign.pk %}" class="text-sm bg-white border rounded px-3 py-1 hover:bg-slate-100">설문(구글 폼)</a>
     <a href="{% url 'admin:campaigns_campaign_change' campaign.pk %}" class="text-sm text-slate-500 hover:text-slate-800">캠페인 수정</a>

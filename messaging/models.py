@@ -89,6 +89,7 @@ class Message(models.Model):
     body = models.TextField("내용", blank=True)
     error = models.TextField("오류", blank=True)
     external_id = models.CharField("외부 메시지 ID", max_length=200, blank=True, db_index=True)
+    manual = models.BooleanField("직접 발송", default=False, help_text="인스타 앱 등에서 직접 보내고 기록만 남긴 메시지")
     sent_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="보낸 직원", null=True, blank=True, on_delete=models.SET_NULL
     )

@@ -2,9 +2,11 @@
 {% load humanize %}
 {% block title %}#{{ job.hashtag }} 후보 검토{% endblock %}
 {% block content %}
-<a href="{% url 'collector:jobs' %}" class="text-sm text-slate-500 hover:text-slate-800">← 수집 작업 목록</a>
+<a href="{% url 'collector:jobs' %}" class="text-sm text-slate-500 hover:text-slate-800">← 인플루언서 발굴</a>
 <h1 class="text-2xl font-bold mt-1">#{{ job.hashtag }}</h1>
-<div class="text-sm text-slate-600 mb-4">{{ job.get_status_display }} · 후보 {{ job.result_count }}명 · 제외 {{ job.skipped_count }}건</div>
+<div class="text-sm text-slate-600 mb-4">{{ job.get_source_display }} · {{ job.get_status_display }} · 후보 {{ job.result_count }}명 · 제외 {{ job.skipped_count }}건{% if job.category %} · 카테고리 {{ job.get_category_display }}{% endif %}</div>
+{% if job.status == "running" and job.source == "apify" %}{% include "collector/_job_running.html" %}{% endif %}
+<p class="text-xs text-slate-500 mb-3">후보는 모두 인플루언서 DB에 등록되어 있습니다. 고른 계정만 캠페인의 컨택 대상으로 추가됩니다. 조회수·좋아요는 이 해시태그에서 찾은 대표 게시물 기준입니다(계정 평균 아님).</p>
 {% if job.error %}<div class="mb-4 rounded bg-red-50 text-red-700 px-3 py-2 text-sm">{{ job.error }}</div>{% endif %}
 
 <form method="get" class="flex flex-wrap items-end gap-3 mb-3 text-sm">
@@ -25,9 +27,9 @@
   <div class="flex flex-wrap items-center gap-2 mb-3 text-sm">
     <select name="campaign" class="border rounded px-2 py-1 bg-white">
       <option value="">캠페인 선택</option>
-      {% for c in campaigns %}<option value="{{ c.pk }}">{{ c }}</option>{% endfor %}
+      {% for c in campaigns %}<option value="{{ c.pk }}" {% if c.pk == default_campaign_id %}selected{% endif %}>{{ c }}</option>{% endfor %}
     </select>
-    <button name="action" value="approve" class="bg-emerald-600 text-white rounded px-3 py-1 hover:bg-emerald-700">선택 승인 · 컨택 대상으로</button>
+    <button name="action" value="approve" class="bg-emerald-600 text-white rounded px-3 py-1 hover:bg-emerald-700">선택한 계정을 캠페인 컨택 대상으로</button>
     <button name="action" value="reject" class="bg-white border rounded px-3 py-1 hover:bg-slate-100">선택 제외</button>
   </div>
 
@@ -36,7 +38,7 @@
       <thead class="bg-slate-100 text-left">
         <tr>
           <th class="px-3 py-2"><input type="checkbox" aria-label="전체 선택" onchange="this.closest('table').querySelectorAll('tbody input[type=checkbox]').forEach(b => b.checked = this.checked)"></th>
-          <th class="px-3 py-2">인스타 계정</th><th class="px-3 py-2">계정 이름</th><th class="px-3 py-2">팔로워</th><th class="px-3 py-2">검토 상태</th><th class="px-3 py-2">기존 등록</th>
+          <th class="px-3 py-2">인스타 계정</th><th class="px-3 py-2">계정 이름</th><th class="px-3 py-2">팔로워</th><th class="px-3 py-2">대표 게시물 조회수</th><th class="px-3 py-2">좋아요</th><th class="px-3 py-2">참여율</th><th class="px-3 py-2">카테고리</th><th class="px-3 py-2">검토 상태</th><th class="px-3 py-2">기존 DB</th>
         </tr>
       </thead>
       <tbody>
@@ -46,11 +48,15 @@
           <td class="px-3 py-2"><a href="{{ c.account_url }}" target="_blank" rel="noopener noreferrer" class="text-emerald-700 hover:underline">@{{ c.handle }}</a></td>
           <td class="px-3 py-2">{{ c.account_name|default:"-" }}</td>
           <td class="px-3 py-2">{{ c.follower_count|default_if_none:"-"|intcomma }}</td>
+          <td class="px-3 py-2">{% if c.raw.post_url %}<a href="{{ c.raw.post_url }}" target="_blank" rel="noopener noreferrer" class="hover:underline">{{ c.raw.views|default_if_none:"보기"|intcomma }}</a>{% else %}{{ c.raw.views|default_if_none:"-"|intcomma }}{% endif %}</td>
+          <td class="px-3 py-2">{{ c.raw.likes|default_if_none:"-"|intcomma }}</td>
+          <td class="px-3 py-2">{% if c.raw.engagement_rate is not None %}{{ c.raw.engagement_rate }}%{% else %}-{% endif %}</td>
+          <td class="px-3 py-2">{% if c.influencer %}<a href="{% url 'admin:influencers_influencer_change' c.influencer.pk %}" class="hover:underline">{{ c.influencer.get_category_display|default:"미분류" }}</a>{% else %}-{% endif %}</td>
           <td class="px-3 py-2">{{ c.get_review_status_display }}</td>
-          <td class="px-3 py-2">{% if c.is_known %}등록됨{% else %}-{% endif %}</td>
+          <td class="px-3 py-2">{% if c.is_known %}이전부터{% else %}<span class="text-emerald-700">새로</span>{% endif %}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="6" class="px-3 py-6 text-center text-slate-500">조건에 맞는 후보가 없습니다.</td></tr>
+        <tr><td colspan="10" class="px-3 py-6 text-center text-slate-500">조건에 맞는 후보가 없습니다.</td></tr>
         {% endfor %}
       </tbody>
     </table>

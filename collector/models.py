@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import models
 
 from core.models import TimeStampedModel
+from influencers.models import Category
 
 
 class HashtagJob(TimeStampedModel):
@@ -13,8 +14,27 @@ class HashtagJob(TimeStampedModel):
         DONE = "done", "완료"
         FAILED = "failed", "실패"
 
+    class Source(models.TextChoices):
+        APIFY = "apify", "클라우드 수집(Apify)"
+        SCRAPER = "scraper", "연결된 스크래퍼"
+        UPLOAD = "upload", "결과 파일 올리기"
+
     hashtag = models.CharField("해시태그", max_length=100, db_index=True)
     limit = models.PositiveIntegerField("최대 수집 수", default=200)
+    source = models.CharField("수집 방법", max_length=10, choices=Source.choices, default=Source.SCRAPER)
+    category = models.CharField(
+        "카테고리", max_length=15, choices=Category.choices, blank=True, help_text="비우면 해시태그·바이오로 추정"
+    )
+    campaign = models.ForeignKey(
+        "campaigns.Campaign",
+        verbose_name="대상 캠페인",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="hashtag_jobs",
+        help_text="후보를 추가할 기본 캠페인",
+    )
+    external = models.JSONField("외부 실행 정보", default=dict, blank=True, help_text="Apify 실행 ID·단계")
     status = models.CharField("상태", max_length=10, choices=Status.choices, default=Status.PENDING)
     requested_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

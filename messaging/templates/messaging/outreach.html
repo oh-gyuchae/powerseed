@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{{ campaign.name }} · 일괄 DM{% endblock %}
+{% block content %}
+<a href="{% url 'campaigns:board' campaign.pk %}" class="text-sm text-slate-500 hover:text-slate-800">← {{ campaign.name }}</a>
+<h1 class="text-2xl font-bold mt-1 mb-1">일괄 DM</h1>
+<p class="text-sm text-slate-500 mb-4">
+  템플릿을 고르면 인플루언서마다 문구가 만들어집니다(<code>{% templatetag openvariable %}설문링크{% templatetag closevariable %}</code>는 각자 전용 구글 폼 링크로 바뀜).
+  첫 DM은 Meta 정책상 API로 보낼 수 없어 <b>복사 → 인스타 DM 열기 → 보냄 기록</b> 순서로 보냅니다. 기록하면 단계가 '컨택 완료'(설문 링크가 들었으면 '설문 발송')로 바뀝니다.
+  구글 폼 답변은 10분마다 자동으로 캠페인에 반영됩니다.
+</p>
+
+<form method="get" class="flex flex-wrap items-end gap-3 mb-3 text-sm">
+  <label>템플릿
+    <select name="template" class="block border rounded px-2 py-1 mt-1 bg-white" onchange="this.form.submit()">
+      {% for t in templates %}<option value="{{ t.pk }}" {% if t == template %}selected{% endif %}>{{ t.name }}</option>{% empty %}<option value="">템플릿 없음</option>{% endfor %}
+    </select>
+  </label>
+  <label>대상 단계
+    <select name="stage" class="block border rounded px-2 py-1 mt-1 bg-white" onchange="this.form.submit()">
+      {% for value, label in stage_choices %}<option value="{{ value }}" {% if value == stage %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </label>
+  <a href="{% url 'admin:messaging_messagetemplate_add' %}" class="text-slate-500 hover:text-slate-800 underline">템플릿 추가</a>
+</form>
+
+{% if not templates %}<div class="mb-3 rounded bg-amber-50 text-amber-800 px-3 py-2 text-sm">메시지 템플릿이 없습니다. Admin에서 먼저 추가하세요.</div>{% endif %}
+
+<div class="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-100 text-left"><tr><th class="px-3 py-2">인플루언서</th><th class="px-3 py-2">보낼 내용</th></tr></thead>
+    <tbody>
+      {% for row in rows %}{% include "messaging/_outreach_row.html" %}
+      {% empty %}<tr><td colspan="2" class="px-3 py-6 text-center text-slate-500">이 단계에 있는 인플루언서가 없습니다. '인플루언서 발굴'에서 후보를 캠페인에 추가하세요.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+<div id="jobs-table" class="bg-white border border-slate-200 rounded-lg overflow-x-auto"
+     {% if has_running %}hx-get="{% url 'collector:poll' %}" hx-trigger="every 5s" hx-swap="outerHTML"{% endif %}>
+  <table class="w-full text-sm">
+    <thead class="bg-slate-100 text-left">
+      <tr><th class="px-3 py-2">해시태그</th><th class="px-3 py-2">수집 방법</th><th class="px-3 py-2">상태</th><th class="px-3 py-2">카테고리</th><th class="px-3 py-2">대상 캠페인</th><th class="px-3 py-2">후보</th><th class="px-3 py-2">캠페인 추가 대기</th><th class="px-3 py-2">요청자</th><th class="px-3 py-2">요청 일시</th></tr>
+    </thead>
+    <tbody>
+      {% for job in jobs %}
+      <tr class="border-t">
+        <td class="px-3 py-2"><a href="{% url 'collector:review' job.pk %}" class="text-emerald-700 hover:underline">#{{ job.hashtag }}</a></td>
+        <td class="px-3 py-2 text-slate-500">{{ job.get_source_display }}</td>
+        <td class="px-3 py-2 {% if job.status == 'failed' %}text-red-700{% elif job.status == 'running' %}text-amber-700{% endif %}">{{ job.get_status_display }}{% if job.status == 'running' %}…{% endif %}</td>
+        <td class="px-3 py-2">{{ job.get_category_display|default:"자동" }}</td>
+        <td class="px-3 py-2">{{ job.campaign.name|default:"-" }}</td>
+        <td class="px-3 py-2">{{ job.result_count }}</td>
+        <td class="px-3 py-2">{{ job.pending_count }}</td>
+        <td class="px-3 py-2">{{ job.requested_by|default:"-" }}</td>
+        <td class="px-3 py-2">{{ job.created_at|date:"Y-m-d H:i" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" class="px-3 py-6 text-center text-slate-500">수집 작업이 없습니다.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

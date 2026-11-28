@@ -64,20 +64,48 @@ def send_message(participation, channel, *, subject="", body, user=None, provide
         raise
     message.status = Message.Status.SENT
     message.save()
+    _after_outbound(participation, message, user)
+    return message
+
+
+def record_manual_message(participation, channel, *, body, user=None) -> Message:
+    """인스타 앱 등에서 직접 보낸 메시지를 기록만 한다 (첫 콜드 DM은 API로 보낼 수 없음 — Meta 정책).
+
+    API 발송과 같은 후처리(마지막 연락일, 컨택 완료·설문 발송 단계 이동)를 한다.
+    """
+    body = body.strip()
+    if not body:
+        raise ProviderError("보낸 내용을 입력하세요.")
+    if channel not in Channel.values:
+        raise ProviderError("알 수 없는 채널입니다.")
+    influencer = participation.influencer
+    message = Message.objects.create(
+        channel=channel,
+        direction=Message.Direction.OUT,
+        status=Message.Status.SENT,
+        manual=True,
+        influencer=influencer,
+        participation=participation,
+        recipient=f"@{influencer.instagram_handle}" if channel == Channel.INSTAGRAM else influencer.email,
+        body=body,
+        sent_by=user,
+    )
+    _after_outbound(participation, message, user)
+    return message
+
+
+def _after_outbound(participation, message, user):
+    """보낸 뒤: 마지막 연락일 갱신 → 설문 링크가 들었으면 '설문 발송', 아니면 컨택 대상을 '컨택 완료'로."""
     participation.last_contacted_at = timezone.localdate()
     participation.save(update_fields=["last_contacted_at", "updated_at"])
 
+    how = f"{message.get_channel_display()}{' (직접 발송)' if message.manual else ''}"
+    stages = participation.campaign.stages
     link = survey_link(participation)
-    if (
-        link
-        and link in body
-        and participation.stage in _BEFORE_SURVEY_SENT
-        and Stage.SURVEY_SENT in participation.campaign.stages
-    ):
-        campaign_services.change_stage(
-            participation, Stage.SURVEY_SENT, user=user, memo=f"{message.get_channel_display()}로 설문 링크 발송"
-        )
-    return message
+    if link and link in message.body and participation.stage in _BEFORE_SURVEY_SENT and Stage.SURVEY_SENT in stages:
+        campaign_services.change_stage(participation, Stage.SURVEY_SENT, user=user, memo=f"{how}로 설문 링크 발송")
+    elif participation.stage == Stage.CONTACT_TARGET and Stage.CONTACTED in stages:
+        campaign_services.change_stage(participation, Stage.CONTACTED, user=user, memo=f"{how}로 첫 연락")
 
 
 # ---------------------------------------------------------------- 인스타 웹훅

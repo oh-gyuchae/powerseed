@@ -241,6 +241,10 @@ COLLECTOR_DEFAULT_LIMIT = int(os.environ.get('COLLECTOR_DEFAULT_LIMIT', 200))
 COLLECTOR_MAX_LIMIT = int(os.environ.get('COLLECTOR_MAX_LIMIT', 1000))
 COLLECTOR_MAX_ATTEMPTS = int(os.environ.get('COLLECTOR_MAX_ATTEMPTS', 3))
 COLLECTOR_RETRY_DELAY = float(os.environ.get('COLLECTOR_RETRY_DELAY', 5))  # 초
+# Apify 클라우드 수집 (설정하면 COLLECTOR_SCRAPER보다 우선). 토큰은 Render Environment에만.
+APIFY_TOKEN = os.environ.get('APIFY_TOKEN', '')
+APIFY_HASHTAG_ACTOR = os.environ.get('APIFY_HASHTAG_ACTOR', 'apify~instagram-hashtag-scraper')
+APIFY_PROFILE_ACTOR = os.environ.get('APIFY_PROFILE_ACTOR', 'apify~instagram-profile-scraper')
 
 # 운영 보안 (HTTPS)
 if not DEBUG:

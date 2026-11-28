@@ -1,0 +1,4 @@
+<div hx-get="{% url 'collector:job_poll' job.pk %}" hx-trigger="every 5s" hx-swap="outerHTML"
+     class="mb-4 rounded bg-amber-50 text-amber-800 px-3 py-2 text-sm">
+  수집 중입니다 ({% if job.external.stage == "profiles" %}2/2 팔로워·프로필 확인{% else %}1/2 해시태그 게시물 찾기{% endif %}). 보통 몇 분 걸리고, 끝나면 이 화면이 자동으로 새로고침됩니다. 화면을 닫아도 수집은 계속됩니다.
+</div>
